@@ -1,0 +1,1796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multiply Quest — The Fox's Journey</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Lilita+One&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg:#0b1a0f;--card:rgba(20,40,25,0.85);--card2:rgba(30,55,35,0.8);
+  --gold:#ffc857;--pink:#ff7eb3;--mint:#7cffcb;--sky:#7ec8e3;
+  --text:#f0f7f0;--dim:#7a9a80;--correct:#7cffcb;--wrong:#ff6b7f;
+}
+
+body{
+  font-family:'Fredoka',sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;overflow-x:hidden;
+}
+
+/* ============ SCENE CANVAS ============ */
+.scene-wrap{
+  position:relative;width:100%;max-width:560px;margin:0 auto;
+  min-height:100vh;display:flex;flex-direction:column;
+}
+
+/* Sky gradient - changes per world */
+.sky{
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;
+  transition:background 1.5s ease;
+}
+.stars-bg{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+
+.content{position:relative;z-index:1;padding:12px 16px;flex:1;display:flex;flex-direction:column}
+
+/* ============ TOP BAR ============ */
+.top-bar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 14px;background:var(--card);border-radius:16px;
+  backdrop-filter:blur(10px);margin-bottom:10px;
+}
+.top-left{display:flex;align-items:center;gap:10px}
+.fox-avatar{font-size:1.6em}
+.world-name{font-family:'Lilita One',sans-serif;font-size:1.05em;color:var(--gold)}
+.top-right{display:flex;gap:14px}
+.stat-pill{display:flex;align-items:center;gap:4px;font-size:.85em;font-weight:600}
+.stat-pill .emoji{font-size:1em}
+.gem-count{color:var(--sky)}
+.streak-count{color:var(--gold)}
+
+/* ============ STORY PATH ============ */
+.path-section{margin:8px 0 6px}
+.path-bar{
+  display:flex;align-items:center;gap:0;
+  background:rgba(255,255,255,0.06);border-radius:20px;padding:6px 10px;
+  position:relative;overflow:hidden;
+}
+.path-step{
+  flex:1;height:10px;border-radius:5px;margin:0 2px;
+  background:rgba(255,255,255,0.08);transition:all .5s ease;position:relative;
+}
+.path-step.done{background:var(--gold);box-shadow:0 0 8px rgba(255,200,87,0.4)}
+.path-step.current{background:var(--mint);box-shadow:0 0 12px rgba(124,255,203,0.5);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:.7}50%{opacity:1}}
+
+.path-fox{
+  position:absolute;top:-18px;font-size:1.4em;
+  transition:left .8s cubic-bezier(.34,1.56,.64,1);z-index:2;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+}
+.path-label{
+  text-align:center;font-size:.7em;color:var(--dim);margin-top:4px;
+  font-weight:600;letter-spacing:.5px;
+}
+
+/* ============ STORY CARD ============ */
+.story-card{
+  background:var(--card);backdrop-filter:blur(12px);
+  border-radius:24px;padding:0;margin:8px 0;
+  border:1px solid rgba(255,255,255,0.06);
+  box-shadow:0 8px 40px rgba(0,0,0,0.4);overflow:hidden;
+  animation:cardIn .5s ease;
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+.scene-illustration{
+  width:100%;height:180px;position:relative;overflow:hidden;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.scene-illustration canvas{width:100%;height:100%}
+
+/* Story text area */
+.story-text-area{padding:18px 20px 10px}
+.story-narrator{
+  font-size:.95em;line-height:1.55;color:var(--text);
+  min-height:50px;
+}
+.story-narrator .highlight{color:var(--gold);font-weight:700}
+.story-narrator .character{color:var(--pink);font-weight:600}
+.story-narrator .item{color:var(--mint);font-weight:600}
+
+/* Character speech bubble */
+.speech-bubble{
+  background:rgba(255,255,255,0.08);border-radius:16px;
+  padding:12px 16px;margin:10px 0 6px;position:relative;
+  border-left:3px solid var(--pink);
+}
+.speech-who{font-size:.75em;color:var(--pink);font-weight:700;margin-bottom:4px}
+.speech-text{font-size:.88em;color:var(--text);font-style:italic}
+
+/* ============ QUESTION AREA ============ */
+.question-area{padding:6px 20px 20px}
+.q-prompt{
+  font-family:'Lilita One',sans-serif;font-size:2.2em;
+  text-align:center;margin:6px 0 14px;
+  color:var(--text);text-shadow:0 2px 12px rgba(0,0,0,0.5);
+}
+
+/* Visual hint (cupcake groups) */
+.visual-hint{
+  display:none;flex-wrap:wrap;gap:8px;justify-content:center;
+  margin:0 0 14px;padding:10px;background:rgba(255,255,255,0.04);border-radius:14px;
+}
+.visual-hint.show{display:flex}
+.vh-group{
+  background:rgba(255,255,255,0.05);border:1.5px dashed rgba(255,255,255,0.12);
+  border-radius:10px;padding:6px 8px;display:flex;gap:3px;flex-wrap:wrap;justify-content:center;
+}
+.vh-item{font-size:1.1em}
+.vh-label{width:100%;text-align:center;font-size:.65em;color:var(--dim);margin-top:6px}
+
+.input-row{display:flex;justify-content:center;align-items:center;gap:10px}
+.answer-input{
+  width:120px;padding:12px;font-family:'Lilita One',sans-serif;font-size:1.8em;
+  text-align:center;background:rgba(255,255,255,0.07);
+  border:3px solid rgba(255,255,255,0.15);border-radius:16px;color:var(--text);
+  outline:none;transition:all .3s;
+}
+.answer-input:focus{border-color:var(--gold);box-shadow:0 0 20px rgba(255,200,87,0.15)}
+.answer-input.correct{border-color:var(--correct);background:rgba(124,255,203,0.08);box-shadow:0 0 24px rgba(124,255,203,0.2)}
+.answer-input.wrong{border-color:var(--wrong);background:rgba(255,107,127,0.08);animation:shake .4s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+.feedback-text{text-align:center;min-height:26px;margin-top:8px;font-weight:600;font-size:.95em}
+.feedback-text.correct-fb{color:var(--correct)}
+.feedback-text.wrong-fb{color:var(--wrong)}
+
+.help-row{display:flex;gap:8px;justify-content:center;margin-top:8px}
+.help-btn{
+  padding:6px 14px;border-radius:10px;background:transparent;
+  border:1.5px solid rgba(255,255,255,0.12);color:var(--dim);
+  cursor:pointer;font-family:'Fredoka',sans-serif;font-size:.78em;
+  font-weight:600;transition:all .2s;
+}
+.help-btn:hover{border-color:var(--sky);color:var(--sky)}
+.hint-text{text-align:center;margin-top:6px;font-size:.82em;color:var(--sky);font-style:italic}
+
+/* ============ CHAPTER COMPLETE ============ */
+.chapter-complete{
+  display:none;text-align:center;padding:30px 20px;
+}
+.chapter-complete.show{display:block;animation:cardIn .6s ease}
+.ch-icon{font-size:3.5em;margin-bottom:10px}
+.ch-title{font-family:'Lilita One',sans-serif;font-size:1.8em;color:var(--gold);margin-bottom:6px}
+.ch-body{font-size:.92em;color:var(--text);line-height:1.5;margin-bottom:16px}
+.ch-reward{
+  display:inline-block;padding:8px 20px;background:rgba(255,200,87,0.12);
+  border:2px solid var(--gold);border-radius:14px;margin-bottom:16px;
+  font-weight:700;color:var(--gold);
+}
+.ch-next-btn{
+  padding:14px 32px;border:none;border-radius:14px;cursor:pointer;
+  font-family:'Lilita One',sans-serif;font-size:1.1em;
+  background:linear-gradient(135deg,var(--gold),#e6a820);color:#1a1035;
+  box-shadow:0 4px 20px rgba(255,200,87,0.3);transition:all .2s;
+}
+.ch-next-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(255,200,87,0.4)}
+
+/* ============ MAP BUTTON ============ */
+.map-btn{
+  position:fixed;bottom:16px;right:16px;z-index:10;
+  width:48px;height:48px;border-radius:50%;border:none;
+  background:var(--card);backdrop-filter:blur(8px);
+  font-size:1.4em;cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,0.4);transition:all .2s;
+  border:2px solid rgba(255,255,255,0.1);
+}
+.map-btn:hover{transform:scale(1.1);border-color:var(--gold)}
+
+/* ============ MUSIC BUTTON ============ */
+.music-btn{
+  position:fixed;bottom:16px;right:72px;z-index:10;
+  width:48px;height:48px;border-radius:50%;border:none;
+  background:var(--card);backdrop-filter:blur(8px);
+  font-size:1.4em;cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,0.4);transition:all .2s;
+  border:2px solid rgba(255,255,255,0.1);
+}
+.music-btn:hover{transform:scale(1.1);border-color:var(--gold)}
+.music-btn.playing{border-color:var(--mint);box-shadow:0 4px 16px rgba(124,255,203,0.2)}
+.music-btn .note-bars{
+  display:flex;align-items:flex-end;justify-content:center;gap:2px;
+  height:20px;width:24px;margin:0 auto;
+}
+.music-btn .note-bar{
+  width:4px;border-radius:2px;background:var(--dim);
+  transition:height .15s ease,background .3s;
+}
+.music-btn.playing .note-bar{background:var(--mint)}
+.music-btn.playing .note-bar:nth-child(1){animation:eqBar 0.8s ease infinite}
+.music-btn.playing .note-bar:nth-child(2){animation:eqBar 0.6s ease infinite 0.1s}
+.music-btn.playing .note-bar:nth-child(3){animation:eqBar 0.7s ease infinite 0.2s}
+.music-btn.playing .note-bar:nth-child(4){animation:eqBar 0.5s ease infinite 0.15s}
+@keyframes eqBar{0%,100%{height:6px}50%{height:18px}}
+
+/* ============ MAP OVERLAY ============ */
+.map-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:20;
+  background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;
+}
+.map-overlay.show{display:flex}
+.map-content{
+  width:90%;max-width:480px;max-height:85vh;overflow-y:auto;
+  background:var(--card);border-radius:24px;padding:24px;
+  border:1px solid rgba(255,255,255,0.08);animation:cardIn .4s ease;
+}
+.map-title{font-family:'Lilita One',sans-serif;font-size:1.4em;color:var(--gold);text-align:center;margin-bottom:16px}
+.map-world{
+  display:flex;align-items:center;gap:12px;padding:12px;
+  border-radius:14px;margin:6px 0;cursor:pointer;transition:all .2s;
+  border:2px solid transparent;
+}
+.map-world:hover{background:rgba(255,255,255,0.04)}
+.map-world.current{border-color:var(--gold);background:rgba(255,200,87,0.06)}
+.map-world.locked{opacity:.35;cursor:default}
+.map-world.completed .mw-icon{position:relative}
+.map-world.completed .mw-icon::after{content:'✓';position:absolute;bottom:-2px;right:-4px;font-size:.6em;color:var(--correct)}
+.mw-icon{font-size:2em;width:48px;text-align:center}
+.mw-info{flex:1}
+.mw-name{font-weight:700;font-size:.95em}
+.mw-desc{font-size:.72em;color:var(--dim);margin-top:2px}
+.mw-stars{margin-top:3px;font-size:.8em}
+.map-close{
+  display:block;margin:16px auto 0;padding:10px 28px;border:none;border-radius:12px;
+  background:rgba(255,255,255,0.08);color:var(--text);cursor:pointer;
+  font-family:'Fredoka',sans-serif;font-size:.9em;font-weight:600;
+}
+.map-close:hover{background:rgba(255,255,255,0.14)}
+.map-stats{text-align:center;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06)}
+.map-stats .ms-row{display:flex;justify-content:center;gap:20px;margin-top:6px}
+.ms-item{text-align:center}
+.ms-val{font-family:'Lilita One',sans-serif;font-size:1.3em}
+.ms-label{font-size:.65em;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+
+/* Confetti */
+.celebration{position:fixed;top:0;left:0;width:100%;height:100%;display:none;z-index:30;pointer-events:none}
+.celebration.show{display:block}
+.confetti-piece{position:absolute;border-radius:2px;animation:confFall 1.6s ease forwards}
+@keyframes confFall{0%{transform:translateY(-100vh) rotate(0);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+
+/* Items collected strip */
+.items-collected{
+  display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;justify-content:center;
+}
+.collected-item{
+  font-size:1.1em;animation:bounceIn .4s ease;
+  filter:drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+}
+@keyframes bounceIn{0%{transform:scale(0)}60%{transform:scale(1.3)}100%{transform:scale(1)}}
+
+/* Reset link */
+.reset-link{
+  display:block;text-align:center;margin-top:12px;
+  font-size:.72em;color:var(--dim);cursor:pointer;text-decoration:underline;
+}
+.reset-link:hover{color:var(--wrong)}
+
+/* ============ FOX DEN ============ */
+.den-btn{
+  position:fixed;bottom:16px;right:128px;z-index:10;
+  width:48px;height:48px;border-radius:50%;border:none;
+  background:var(--card);backdrop-filter:blur(8px);
+  font-size:1.4em;cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,0.4);transition:all .2s;
+  border:2px solid rgba(255,255,255,0.1);
+}
+.den-btn:hover{transform:scale(1.1);border-color:var(--gold)}
+.den-btn .den-notif{
+  position:absolute;top:-2px;right:-2px;width:14px;height:14px;
+  background:var(--pink);border-radius:50%;border:2px solid var(--bg);
+  display:none;
+}
+.den-btn .den-notif.show{display:block;animation:pulse 1.5s infinite}
+
+.den-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:20;
+  background:rgba(0,0,0,0.88);backdrop-filter:blur(6px);
+  display:none;overflow-y:auto;
+}
+.den-overlay.show{display:block}
+.den-content{
+  width:94%;max-width:520px;margin:16px auto;
+  animation:cardIn .4s ease;
+}
+.den-header{
+  display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;
+}
+.den-title{font-family:'Lilita One',sans-serif;font-size:1.3em;color:var(--gold)}
+.den-gems{display:flex;align-items:center;gap:4px;font-weight:700;color:var(--sky)}
+.den-close{
+  padding:6px 16px;border:none;border-radius:10px;
+  background:rgba(255,255,255,0.08);color:var(--text);cursor:pointer;
+  font-family:'Fredoka',sans-serif;font-size:.85em;font-weight:600;
+}
+.den-close:hover{background:rgba(255,255,255,0.14)}
+
+/* Room canvas */
+.den-room{
+  width:100%;border-radius:20px;overflow:hidden;
+  background:var(--card);border:1px solid rgba(255,255,255,0.06);
+  box-shadow:0 6px 30px rgba(0,0,0,0.4);
+}
+.den-room canvas{width:100%;display:block}
+
+/* Visitor banner */
+.den-visitor{
+  background:rgba(255,179,71,0.1);border:1px solid rgba(255,179,71,0.2);
+  border-radius:14px;padding:12px 16px;margin:10px 0;
+  display:none;text-align:center;
+}
+.den-visitor.show{display:block;animation:cardIn .4s ease}
+.den-visitor-text{font-size:.88em;color:var(--text)}
+.den-visitor-who{font-weight:700;color:var(--gold)}
+
+/* Tabs in den */
+.den-tabs{display:flex;gap:6px;margin:10px 0}
+.den-tab{
+  flex:1;padding:8px;border-radius:10px;border:2px solid rgba(255,255,255,0.06);
+  background:transparent;color:var(--dim);cursor:pointer;
+  font-family:'Fredoka',sans-serif;font-size:.8em;font-weight:600;
+  text-align:center;transition:all .2s;
+}
+.den-tab.active{border-color:var(--gold);color:var(--gold);background:rgba(255,179,71,0.08)}
+
+/* Shop grid */
+.den-shop{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.shop-item{
+  background:var(--card);border-radius:14px;padding:12px 8px;text-align:center;
+  border:2px solid rgba(255,255,255,0.05);cursor:pointer;transition:all .2s;
+}
+.shop-item:hover{border-color:rgba(255,255,255,0.15);transform:translateY(-1px)}
+.shop-item.owned{border-color:rgba(124,255,203,0.25);background:rgba(124,255,203,0.04)}
+.shop-item.equipped{border-color:var(--gold);box-shadow:0 0 12px rgba(255,179,71,0.15)}
+.shop-item.cant-afford{opacity:.4}
+.shop-icon{font-size:2em;margin-bottom:4px}
+.shop-name{font-size:.72em;font-weight:600}
+.shop-price{font-size:.65em;color:var(--sky);margin-top:2px}
+.shop-price.owned-label{color:var(--correct)}
+
+/* Placed items list */
+.den-placed{
+  display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;justify-content:center;
+}
+.placed-tag{
+  padding:4px 10px;border-radius:8px;font-size:.75em;
+  background:rgba(255,255,255,0.06);color:var(--text);
+}
+
+@media(max-width:480px){
+  .q-prompt{font-size:1.8em}
+  .answer-input{width:100px;font-size:1.5em}
+  .scene-illustration{height:150px}
+  .story-narrator{font-size:.88em}
+  .den-shop{grid-template-columns:repeat(2,1fr)}
+  .den-btn{right:120px}
+}
+</style>
+</head>
+<body>
+
+<div class="scene-wrap">
+  <div class="sky" id="sky"></div>
+  <div class="stars-bg" id="starsBg"></div>
+  <div class="content">
+    <div class="top-bar">
+      <div class="top-left">
+        <div class="fox-avatar">🦊</div>
+        <div class="world-name" id="worldName">Enchanted Forest</div>
+      </div>
+      <div class="top-right">
+        <div class="stat-pill"><span class="emoji">💎</span><span class="gem-count" id="gemCount">0</span></div>
+        <div class="stat-pill"><span class="emoji">🔥</span><span class="streak-count" id="streakCount">0</span></div>
+      </div>
+    </div>
+
+    <div class="path-section">
+      <div class="path-bar" id="pathBar"></div>
+      <div class="path-label" id="pathLabel">Step 1 of 10</div>
+    </div>
+
+    <div class="story-card" id="storyCard">
+      <div class="scene-illustration"><canvas id="sceneCanvas" width="560" height="180"></canvas></div>
+      <div class="story-text-area">
+        <div class="story-narrator" id="storyNarrator"></div>
+        <div class="speech-bubble" id="speechBubble" style="display:none">
+          <div class="speech-who" id="speechWho"></div>
+          <div class="speech-text" id="speechText"></div>
+        </div>
+        <div class="items-collected" id="itemsCollected"></div>
+      </div>
+      <div class="question-area" id="questionArea">
+        <div class="q-prompt" id="qPrompt">3 × 7</div>
+        <div class="visual-hint" id="visualHint"></div>
+        <div class="input-row">
+          <input type="number" class="answer-input" id="answerInput" autocomplete="off" inputmode="numeric">
+        </div>
+        <div class="feedback-text" id="feedbackText"></div>
+        <div class="help-row">
+          <button class="help-btn" id="hintBtn">💡 Hint</button>
+          <button class="help-btn" id="showBtn">👀 Show groups</button>
+        </div>
+        <div class="hint-text" id="hintText"></div>
+      </div>
+      <div class="chapter-complete" id="chapterComplete">
+        <div class="ch-icon" id="chIcon">🏰</div>
+        <div class="ch-title" id="chTitle">Chapter Complete!</div>
+        <div class="ch-body" id="chBody"></div>
+        <div class="ch-reward" id="chReward"></div><br>
+        <button class="ch-next-btn" id="chNextBtn">Continue Journey →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button class="map-btn" id="mapBtn">🗺️</button>
+<button class="den-btn" id="denBtn" title="Fox Den">🏡<span class="den-notif" id="denNotif"></span></button>
+<button class="music-btn" id="musicBtn" title="Toggle music">
+  <div class="note-bars">
+    <div class="note-bar" style="height:8px"></div>
+    <div class="note-bar" style="height:14px"></div>
+    <div class="note-bar" style="height:10px"></div>
+    <div class="note-bar" style="height:16px"></div>
+  </div>
+</button>
+
+<div class="den-overlay" id="denOverlay">
+  <div class="den-content">
+    <div class="den-header">
+      <div class="den-title">🏡 Fox Den</div>
+      <div class="den-gems">💎 <span id="denGems">0</span></div>
+      <button class="den-close" id="denClose">Back to quest</button>
+    </div>
+
+    <div class="den-room" style="position:relative">
+      <canvas id="denCanvas" width="520" height="320"></canvas>
+      <div id="denEmojis" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></div>
+    </div>
+
+    <div class="den-visitor" id="denVisitor">
+      <div class="den-visitor-text">
+        <span class="den-visitor-who" id="denVisitorWho"></span>
+        <span id="denVisitorMsg"></span>
+      </div>
+    </div>
+
+    <div class="den-tabs">
+      <button class="den-tab active" data-dentab="furniture">🪑 Furniture</button>
+      <button class="den-tab" data-dentab="deco">✨ Decor</button>
+      <button class="den-tab" data-dentab="pets">🐾 Pets</button>
+      <button class="den-tab" data-dentab="themes">🎨 Themes</button>
+    </div>
+
+    <div class="den-shop" id="denShop"></div>
+  </div>
+</div>
+
+<div class="map-overlay" id="mapOverlay">
+  <div class="map-content">
+    <div class="map-title">🗺️ World Map</div>
+    <div id="mapWorlds"></div>
+    <div class="map-stats">
+      <div class="ms-row">
+        <div class="ms-item"><div class="ms-val" id="mapGems">0</div><div class="ms-label">💎 Gems</div></div>
+        <div class="ms-item"><div class="ms-val" id="mapCorrect">0</div><div class="ms-label">✓ Correct</div></div>
+        <div class="ms-item"><div class="ms-val" id="mapStreak">0</div><div class="ms-label">🔥 Best Streak</div></div>
+      </div>
+    </div>
+    <span class="reset-link" id="resetLink">Reset all progress</span>
+    <button class="map-close" id="mapClose">Close</button>
+  </div>
+</div>
+
+<div class="celebration" id="celebration"></div>
+
+<script>
+(function(){
+
+const STORE='fox_quest_v5';
+
+// ======== WORLDS ========
+// 10 chapters, only tables: 3, 4, 6, 7, 8, 9, 12
+const WORLDS=[
+{
+  name:'The Mystery of the Missing Cake',icon:'🎂',tables:[3],
+  sky:'linear-gradient(180deg,#1a1520 0%,#2a2535 40%,#3a3550 70%,#5a5080 100%)',
+  desc:'Someone stole the birthday cake!',
+  scenes:[
+    {narrator:'It\'s your friend <span class="character">Bunny\'s</span> birthday — but the cake has VANISHED! There are crumbs leading in three directions.',speech:{who:'🐰 Bunny',text:'My cake!! It was right here! Please help me find it, fox!'},item:null,sceneType:'cave-start'},
+    {narrator:'<span class="highlight">Clue #1:</span> Three muddy footprints near the window. They\'re too small for a bear, too big for a mouse…',speech:null,item:'🔍',sceneType:'forest-mushrooms'},
+    {narrator:'You follow the prints to the <span class="character">raccoon twins</span>, licking frosting off their paws.',speech:{who:'🦝 Rocky & Rascal',text:'It wasn\'t us! We only took THREE licks each! …okay, maybe we know something.'},item:'🐾',sceneType:'forest-squirrel'},
+    {narrator:'<span class="highlight">Clue #2:</span> A trail of <span class="item">sprinkles</span> leads toward the old mill!',speech:null,item:'✨',sceneType:'forest-stream'},
+    {narrator:'At the mill, a <span class="character">nervous goose</span> hides behind flour sacks.',speech:{who:'🪿 Greta Goose',text:'I saw someone! They wore a RED SCARF and ran toward the bridge!'},item:'🧣',sceneType:'forest-deer'},
+    {narrator:'<span class="highlight">Clue #3:</span> Under the bridge — a <span class="item">dropped cherry</span> from the cake! Getting warmer!',speech:null,item:'🍒',sceneType:'forest-fireflies'},
+    {narrator:'A <span class="character">sneaky magpie</span> in her nest — shiny things everywhere, but no cake.',speech:{who:'🐦‍⬛ Maggie',text:'I saw someone carry a big pink box into the SECRET GARDEN!'},item:'💍',sceneType:'cave-spider'},
+    {narrator:'You squeeze through the garden gate. <span class="item">Party decorations everywhere!</span> Wait…',speech:null,item:'🎈',sceneType:'forest-badger'},
+    {narrator:'<span class="highlight">SURPRISE!</span> ALL your friends jump out! The cake was for a surprise party for YOU!',speech:{who:'🐰 Bunny',text:'GOTCHA! We were setting up YOUR surprise party the whole time!!'},item:'🎁',sceneType:'cave-cathedral'},
+    {narrator:'Two cakes! Bunny\'s AND a fox-shaped one just for you! <span class="highlight">Best. Day. Ever!</span>',speech:{who:'🎂 Everyone',text:'HAPPY SURPRISE, FOX! Best detective AND best friend!'},item:'🎂',sceneType:'forest-heart'},
+  ]
+},
+{
+  name:'The Great Bake-Off',icon:'🧁',tables:[4],
+  sky:'linear-gradient(180deg,#2a1a10 0%,#4a3018 40%,#6a4820 70%,#8a6830 100%)',
+  desc:'A wild baking competition!',
+  scenes:[
+    {narrator:'<span class="highlight">THE GREAT FOREST BAKE-OFF!</span> Five bakers. One trophy. YOU are competing!',speech:{who:'🐻 Chef Bruno',text:'Today: cupcakes! Everything measured in FOURS. Ready? BAKE!'},item:null,sceneType:'dragon-start'},
+    {narrator:'<span class="highlight">Round 1:</span> Measure the flour! Your recipe needs exact groups of four cups.',speech:null,item:'🧁',sceneType:'dragon-eggs'},
+    {narrator:'The <span class="character">hedgehog baker</span> next to you spills sugar EVERYWHERE!',speech:{who:'🦔 Prickles',text:'Oops! Help me figure out how much to replace — in fours!'},item:'🍬',sceneType:'sky-flowers'},
+    {narrator:'<span class="highlight">Round 2: Decoration!</span> Place exactly the right <span class="item">chocolate chips</span> on each cupcake.',speech:null,item:'🍫',sceneType:'dragon-treasure'},
+    {narrator:'DISASTER! The <span class="character">oven</span> starts making weird noises!',speech:{who:'🐭 Sous Chef Squeak',text:'The temperature is wrong! Multiply to fix the dial! HURRY!'},item:'🔥',sceneType:'dragon-lava'},
+    {narrator:'<span class="highlight">Round 3: Taste Test!</span> Chef Bruno takes FOUR bites of each entry.',speech:null,item:'⭐',sceneType:'sky-songbird'},
+    {narrator:'A <span class="character">sneaky crow</span> swoops in and steals a whole tray!',speech:{who:'🐦‍⬛ Cookie Thief',text:'Caw! Catch me if you can figure out how many I took!'},item:'🧁',sceneType:'cave-spider'},
+    {narrator:'You chase the crow and save the cupcakes! The audience goes wild!',speech:null,item:'🏃',sceneType:'sky-rainbow'},
+    {narrator:'<span class="highlight">FINAL ROUND:</span> Build a cupcake TOWER! Four per level, as tall as you can!',speech:null,item:'🏗️',sceneType:'dragon-summit'},
+    {narrator:'Your tower is the tallest! Chef Bruno: <span class="highlight">"WINNER!"</span> Confetti everywhere!',speech:{who:'🐻 Chef Bruno',text:'MAGNIFIQUE! Most precise measurements I\'ve EVER seen!'},item:'🏆',sceneType:'dragon-heart'},
+  ]
+},
+{
+  name:'The Underwater Race',icon:'🏊',tables:[6],
+  sky:'linear-gradient(180deg,#0a1a2e 0%,#0e2a4a 35%,#1a4a6e 60%,#2a6a8e 85%,#4aaabe 100%)',
+  desc:'A wild race through the ocean!',
+  scenes:[
+    {narrator:'<span class="highlight">THE OCEAN GRAND PRIX!</span> Six racers. Six laps. Your submarine is shaped like a fox!',speech:{who:'🐙 Announcer Inky',text:'Racers ready! This race has PUZZLE GATES! Solve to pass!'},item:null,sceneType:'sky-start'},
+    {narrator:'<span class="highlight">LAP 1 — GO!</span> You zoom past <span class="item">coral arches</span>. First gate flashes!',speech:null,item:'🏁',sceneType:'sky-flowers'},
+    {narrator:'The <span class="character">shark racer</span> pulls alongside you, grinning.',speech:{who:'🦈 Fin McSpeed',text:'Not bad for a land animal! Can you handle the WHIRLPOOL ZONE?'},item:'🌊',sceneType:'sky-rainbow'},
+    {narrator:'<span class="highlight">LAP 2:</span> A <span class="item">giant whirlpool</span>! Only the correct answer opens the safe lane!',speech:null,item:'🌀',sceneType:'cave-lake'},
+    {narrator:'A <span class="character">sea turtle racer</span> is stuck behind kelp!',speech:{who:'🐢 Shelly',text:'Help me break through! Solve this and we BOTH advance!'},item:'🐢',sceneType:'sky-turtle'},
+    {narrator:'<span class="highlight">LAP 3:</span> A <span class="item">bioluminescent canyon</span> — walls glow electric blue!',speech:null,item:'💙',sceneType:'star-nebula'},
+    {narrator:'PLOT TWIST! A <span class="character">giant whale</span> blocks the track, yawning.',speech:{who:'🐋 Whaley',text:'*yawwwn* Race? Solve this and I\'ll move my enormous self.'},item:'🐋',sceneType:'sky-sheep'},
+    {narrator:'<span class="highlight">LAP 4:</span> SECOND PLACE! <span class="item">Jellyfish speed boost</span> zone ahead!',speech:null,item:'⚡',sceneType:'sky-waterfall'},
+    {narrator:'<span class="highlight">FINAL STRETCH!</span> Neck and neck with Fin McSpeed! One last gate!',speech:null,item:'🔥',sceneType:'star-gates'},
+    {narrator:'<span class="highlight">YOU WIN!!!</span> Dolphins, crabs, and seahorses cheer! A kelp wreath for the champion!',speech:{who:'🐙 Announcer Inky',text:'A FOX wins the Ocean Grand Prix!! INCREDIBLE!'},item:'🥇',sceneType:'sky-heart'},
+  ]
+},
+{
+  name:'The Tiny Kingdom',icon:'🐜',tables:[7],
+  sky:'linear-gradient(180deg,#1a2a10 0%,#2a4a18 35%,#4a7a28 60%,#6aaa40 85%,#8ada58 100%)',
+  desc:'You shrink to the size of an ant!',
+  scenes:[
+    {narrator:'You ate a strange berry and now you\'re <span class="highlight">THE SIZE OF AN ANT!</span> A blade of grass is a skyscraper!',speech:null,item:null,sceneType:'forest-start'},
+    {narrator:'An <span class="character">ant general</span> marches up with a tiny army.',speech:{who:'🐜 General Crumb',text:'A giant! Oh wait, you\'re small now. The spider queen stole our food! Help us!'},item:'🐜',sceneType:'forest-mushrooms'},
+    {narrator:'You ride a <span class="item">ladybug taxi</span> across your backyard. It\'s a VAST jungle now!',speech:null,item:'🐞',sceneType:'forest-stream'},
+    {narrator:'A <span class="character">caterpillar architect</span> builds a bridge from a twig.',speech:{who:'🐛 Builder Bob',text:'This twig holds seven ants at once. Help me calculate the weight!'},item:'🌿',sceneType:'forest-squirrel'},
+    {narrator:'A <span class="highlight">raindrop</span> the size of a boulder wobbles dangerously above!',speech:null,item:'💧',sceneType:'cave-amethyst'},
+    {narrator:'A <span class="character">beetle knight</span> in shiny armor blocks a tunnel.',speech:{who:'🪲 Sir Shellsworth',text:'HALT! Password is a number! Seven times something!'},item:'🛡️',sceneType:'dragon-guard'},
+    {narrator:'Inside: the ants\' <span class="item">stolen food</span> — crumbs like boulders, wrapped in silk.',speech:null,item:'🍞',sceneType:'cave-columns'},
+    {narrator:'The <span class="character">spider queen</span> appears — but she\'s… crying?',speech:{who:'🕷️ Queen Silk',text:'I\'m sorry! My babies were hungry and I didn\'t know what else to do…'},item:'🕸️',sceneType:'cave-spider'},
+    {narrator:'You <span class="highlight">negotiate a deal</span>: ants share food, spiders protect the colony. Everyone wins!',speech:null,item:'🤝',sceneType:'forest-door'},
+    {narrator:'You grow back! On the ground, a tiny ant waves. You\'ll never forget the <span class="highlight">Tiny Kingdom</span>.',speech:{who:'🐜 General Crumb',text:'You\'ll always be an honorary ant — the BIGGEST one we\'ve ever had!'},item:'💚',sceneType:'forest-heart'},
+  ]
+},
+{
+  name:'The Haunted Pajama Party',icon:'👻',tables:[8],
+  sky:'linear-gradient(180deg,#0a0a1a 0%,#151530 35%,#202050 60%,#353580 85%,#5050a0 100%)',
+  desc:'A sleepover goes spooky!',
+  scenes:[
+    {narrator:'Sleepover with seven friends. Lights go out. A voice: <em>"Find the eight golden stars before midnight!"</em>',speech:null,item:null,sceneType:'star-start'},
+    {narrator:'A <span class="character">ghost</span> appears — wearing BUNNY SLIPPERS. Not very scary.',speech:{who:'👻 Boo',text:'BOO! Hehe! I\'m a FRIENDLY ghost! I hid the stars as a game! First clue!'},item:'⭐',sceneType:'star-cat'},
+    {narrator:'<span class="highlight">Star #1</span> is inside a pillow fort with a <span class="item">number lock</span>!',speech:null,item:'⭐',sceneType:'cave-cathedral'},
+    {narrator:'Your friend <span class="character">Raccoon</span> jumps out from behind a curtain!',speech:{who:'🦝 Dash',text:'Found a clue under the couch! A math riddle — eights everywhere!'},item:'🔦',sceneType:'star-corridor'},
+    {narrator:'<span class="highlight">Star #3</span> on the ceiling! Stack <span class="item">eight pillows</span> to reach it!',speech:null,item:'⭐',sceneType:'sky-palace'},
+    {narrator:'A <span class="character">bat puppet</span> from the closet — it\'s your friend Mouse!',speech:{who:'🐭 Mouse',text:'*spooky voice* I am the BAT OF NUMBERS! Solve or face… a TICKLE ATTACK!'},item:'🦇',sceneType:'cave-bat'},
+    {narrator:'<span class="highlight">Stars #5 and #6</span> inside a jack-o-lantern <span class="item">math puzzle box</span>!',speech:null,item:'⭐⭐',sceneType:'star-nebula'},
+    {narrator:'Ghost Boo floats through a wall, giggling.',speech:{who:'👻 Boo',text:'Only two more! Check the cookie jar…'},item:'🍪',sceneType:'star-sprite'},
+    {narrator:'<span class="highlight">Star #7</span> was IN A COOKIE! You bite a snickerdoodle and CLINK!',speech:null,item:'⭐',sceneType:'cave-garden'},
+    {narrator:'Last star was <span class="highlight">on Boo\'s head the whole time!</span> Everyone laughs. MIDNIGHT PIZZA!',speech:{who:'👻 Boo',text:'You found them ALL! Prize: MIDNIGHT PIZZA PARTY!!! 🍕🎉'},item:'🍕',sceneType:'star-heart'},
+  ]
+},
+{
+  name:'The Cloud Chef Academy',icon:'👨‍🍳',tables:[9],
+  sky:'linear-gradient(180deg,#15102a 0%,#251a45 35%,#3a2a6a 60%,#5a4090 85%,#8060c0 100%)',
+  desc:'Cook magical food in the sky!',
+  scenes:[
+    {narrator:'You float up to the <span class="highlight">Cloud Chef Academy</span> — a cooking school IN THE SKY!',speech:{who:'👨‍🍳 Chef Cumulus',text:'Welcome! Pass nine challenges and you graduate! Secret ingredient? NINES!'},item:null,sceneType:'sky-start'},
+    {narrator:'<span class="highlight">Lesson 1: Cloud Bread!</span> Knead fluffy clouds. Nine squishes per loaf!',speech:null,item:'🍞',sceneType:'sky-flowers'},
+    {narrator:'Your <span class="character">classmate penguin</span> is struggling.',speech:{who:'🐧 Waddles',text:'I keep losing count! Help with the nines? I\'ll share my rainbow sprinkles!'},item:'🐧',sceneType:'sky-songbird'},
+    {narrator:'<span class="highlight">Lesson 2: Starfruit Soup!</span> Nine <span class="item">starfruit pieces</span> per bowl. Smells amazing!',speech:null,item:'⭐',sceneType:'sky-sheep'},
+    {narrator:'OOPS! The <span class="character">kitchen gremlin</span> switched salt and sugar!',speech:{who:'👹 Gremby',text:'Heheheh! Solve my nines puzzle and I\'ll tell you which is which! Maybe!'},item:'🧂',sceneType:'cave-spider'},
+    {narrator:'<span class="highlight">Lesson 3: Moon Meringue!</span> Whip cloud fluff for <span class="item">nine minutes</span>. It turns silver!',speech:null,item:'🌙',sceneType:'star-corridor'},
+    {narrator:'The <span class="character">taste-testing dragon</span> arrives, licking his chops.',speech:{who:'🐲 Flavor',text:'Nine taste buds per scale! Your food must satisfy ALL of them!'},item:'🐲',sceneType:'dragon-baby'},
+    {narrator:'<span class="highlight">Final Exam!</span> A <span class="item">three-course meal</span> using everything. Nine of everything!',speech:null,item:'🍽️',sceneType:'sky-palace'},
+    {narrator:'Chef Cumulus tastes your food. Eyes wide. A single tear.',speech:null,item:'😲',sceneType:'star-bridge'},
+    {narrator:'<span class="highlight">"PERFECTION!"</span> Golden chef\'s hat! Waddles hugs you! You\'re a CLOUD CHEF!',speech:{who:'👨‍🍳 Chef Cumulus',text:'In 900 years, never tasted anything so wonderful. Nine stars!'},item:'👨‍🍳',sceneType:'sky-heart'},
+  ]
+},
+{
+  name:'The Band of Misfits',icon:'🎸',tables:[3,7],
+  sky:'linear-gradient(180deg,#1a0a20 0%,#2e1535 35%,#4a2050 60%,#7a3580 85%,#aa50a0 100%)',
+  desc:'Form a band and win the show!',
+  scenes:[
+    {narrator:'<span class="highlight">Battle of the Bands</span> is TOMORROW and you don\'t have a band! Time to recruit!',speech:null,item:null,sceneType:'cave-start'},
+    {narrator:'Recruit #1: a <span class="character">drumming raccoon</span> who plays on trash cans.',speech:{who:'🦝 Boom',text:'I play ANY beat! Help me count the rhythm — threes and sevens!'},item:'🥁',sceneType:'cave-bat'},
+    {narrator:'A <span class="character">singing cat</span> on a rooftop, howling at the moon.',speech:{who:'🐱 Melody',text:'I\'ll join! If you can keep up with my vocal scales!'},item:'🎤',sceneType:'cave-amethyst'},
+    {narrator:'Recruit #3: a <span class="character">bass-playing bear</span> alone in a cave.',speech:{who:'🐻 Rumble',text:'I\'ve waited for a band my whole life! LET\'S DO THIS!'},item:'🎸',sceneType:'cave-columns'},
+    {narrator:'<span class="highlight">REHEARSAL!</span> Sounds TERRIBLE. Like cats in a blender. But you keep trying.',speech:null,item:'📝',sceneType:'forest-fireflies'},
+    {narrator:'Your <span class="character">rival band</span> — The Sneering Snakes — trash talks.',speech:{who:'🐍 Hissy',text:'You\'ll never beat US! Three years running! Give up, losers!'},item:'😤',sceneType:'dragon-guard'},
+    {narrator:'<span class="highlight">DAY 2:</span> Something clicks. The music sounds AMAZING. You write an original song!',speech:null,item:'🎵',sceneType:'star-corridor'},
+    {narrator:'<span class="highlight">SHOW NIGHT!</span> Packed venue! The Snakes play first — they\'re good. Really good.',speech:null,item:'😰',sceneType:'star-gates'},
+    {narrator:'Your turn. Boom counts in: <em>"1, 2, 3, 4!"</em> Best you\'ve EVER played!',speech:null,item:'🔥',sceneType:'dragon-phoenix'},
+    {narrator:'The crowd goes INSANE! <span class="highlight">YOU WIN!</span> Even the Snakes clap. GROUP HUG!',speech:{who:'🦝 Boom',text:'MISFITS FOREVER!! Same time next year?!'},item:'🏆',sceneType:'star-heart'},
+  ]
+},
+{
+  name:'The Great Toy Heist',icon:'🧸',tables:[4,8],
+  sky:'linear-gradient(180deg,#1a1005 0%,#2e2008 35%,#4a3510 60%,#7a5a18 85%,#aa8020 100%)',
+  desc:'Steal back toys from a grumpy goblin!',
+  scenes:[
+    {narrator:'The <span class="character">Grumpy Goblin</span> stole ALL the village toys! Mission: <span class="highlight">GET THEM BACK!</span>',speech:{who:'🧒 Village Kids',text:'He took everything! Teddy bears, blocks, dolls! Please help!'},item:null,sceneType:'dragon-start'},
+    {narrator:'<span class="highlight">Phase 1: Scout.</span> Sneak through the garden, counting guard-gnomes.',speech:null,item:'🔭',sceneType:'forest-mushrooms'},
+    {narrator:'A <span class="character">friendly mole</span> pops up!',speech:{who:'🐀 Tunnel Tim',text:'I can dig a secret entrance! But the tunnel needs exact calculations — fours and eights!'},item:'🕳️',sceneType:'cave-lake'},
+    {narrator:'<span class="highlight">Phase 2: Infiltrate!</span> Through Tim\'s tunnel to the basement. <span class="item">Toys stacked to the ceiling!</span>',speech:null,item:'🧸',sceneType:'cave-columns'},
+    {narrator:'ALARM! A <span class="character">guard cat</span> spots you! But it just… purrs.',speech:{who:'🐱 Sgt. Whiskers',text:'I don\'t even like the Goblin. He never gives me treats. Want help?'},item:'🐱',sceneType:'forest-deer'},
+    {narrator:'<span class="highlight">Phase 3: Toy Relay!</span> Fox, mole, cat — passing toys through the tunnel in groups of eight.',speech:null,item:'🧩',sceneType:'sky-sheep'},
+    {narrator:'The Goblin comes home EARLY! Hide behind a giant teddy bear!',speech:{who:'👺 Grumpy Goblin',text:'*sniff* Something smells like FOX! And MOLE! And… is that MY cat?!'},item:'😱',sceneType:'dragon-elder'},
+    {narrator:'Sgt. Whiskers <span class="highlight">knocks over a vase</span>. Classic cat distraction!',speech:null,item:'💨',sceneType:'sky-rainbow'},
+    {narrator:'Grab the last toys and DIVE into the tunnel! Goblin can\'t follow!',speech:null,item:'🏃',sceneType:'cave-spider'},
+    {narrator:'Every toy returned! Sgt. Whiskers stays with YOU now. <span class="highlight">Mission complete!</span>',speech:{who:'🐱 Sgt. Whiskers',text:'Best day ever. I\'m YOUR cat now. Do you have treats?'},item:'❤️',sceneType:'forest-heart'},
+  ]
+},
+{
+  name:'Fox In Space!',icon:'🚀',tables:[6,9],
+  sky:'linear-gradient(180deg,#05051a 0%,#0a0a30 30%,#10104a 55%,#1a1a6a 80%,#2a2a9a 100%)',
+  desc:'Blast off on a space adventure!',
+  scenes:[
+    {narrator:'<span class="highlight">3… 2… 1… LIFTOFF!</span> Your rocket blasts off! You\'re going to SPACE!',speech:{who:'🤖 ROBO',text:'Good morning, Captain Fox! Mission: deliver supplies to six stations. Navigation needs math!'},item:null,sceneType:'star-start'},
+    {narrator:'<span class="highlight">Station 1: Moon Base!</span> Unload <span class="item">moon rocks</span> in crates of six.',speech:null,item:'🌙',sceneType:'star-corridor'},
+    {narrator:'Your <span class="character">alien pen pal</span> shows up!',speech:{who:'👽 Zorp',text:'FOX! You came! Space candy — one for every nine light-years you traveled!'},item:'🍬',sceneType:'star-cat'},
+    {narrator:'<span class="highlight">Station 2: Asteroid Belt Diner!</span> A floating restaurant run by a <span class="item">chef comet</span>.',speech:null,item:'☄️',sceneType:'sky-palace'},
+    {narrator:'<span class="highlight">EMERGENCY!</span> Satellite drifting off course!',speech:{who:'🤖 ROBO',text:'Correct the trajectory or it crashes into an ice cream asteroid!'},item:'🛰️',sceneType:'star-nebula'},
+    {narrator:'<span class="highlight">Station 3: Space Zoo!</span> A <span class="item">six-legged space puppy</span> licks your face!',speech:null,item:'🐶',sceneType:'sky-flowers'},
+    {narrator:'The <span class="character">Space Postal bear</span> has packages!',speech:{who:'🐻 Postmaster Grizzly',text:'Nine packages to nine galaxies! Help me sort the delivery math!'},item:'📦',sceneType:'star-bridge'},
+    {narrator:'<span class="highlight">Station 4: Star Garden!</span> Zero-gravity flowers spinning in slow motion.',speech:null,item:'🌺',sceneType:'sky-waterfall'},
+    {narrator:'Approaching the final <span class="highlight">Crystal Space Station</span> at the edge of known space.',speech:null,item:'💎',sceneType:'star-gates'},
+    {narrator:'Mission complete! A billion stars outside. ROBO plays your favorite song.',speech:{who:'🤖 ROBO',text:'Mission: SUCCESS. Captain Fox, you are certified for INTERGALACTIC TRAVEL. 🌟'},item:'🚀',sceneType:'star-heart'},
+  ]
+},
+{
+  name:'The Last Chapter',icon:'📖',tables:[7,9,12],
+  sky:'linear-gradient(180deg,#10080a 0%,#201518 35%,#3a2530 60%,#5a3848 85%,#8a5068 100%)',
+  desc:'Where every story comes together',
+  scenes:[
+    {narrator:'You open a <span class="highlight">mysterious book</span> and get PULLED INSIDE! Pages are blank — waiting for YOUR story.',speech:null,item:null,sceneType:'cave-start'},
+    {narrator:'Page 1: a mashup of EVERY world! A pirate ship in the clouds! An ant riding a dragon!',speech:{who:'📖 The Book',text:'I\'ve been watching your journey. Let\'s write the ending TOGETHER.'},item:'📖',sceneType:'cave-cathedral'},
+    {narrator:'<span class="character">Bunny</span> and <span class="character">Chef Bruno</span> appear in the same scene!',speech:{who:'🐰 Bunny',text:'We all live in the same book! Solve this for old times\' sake!'},item:'🐰',sceneType:'forest-stream'},
+    {narrator:'<span class="character">Ghost Boo</span> floats by carrying <span class="character">General Crumb</span> on their head!',speech:{who:'👻 Boo',text:'The ant general is so LIGHT! One more puzzle unlocks the next page!'},item:'👻',sceneType:'star-nebula'},
+    {narrator:'The pages flip to a <span class="highlight">massive feast</span> — Cloud Chef and Bake-Off judges cooking together!',speech:null,item:'🍽️',sceneType:'sky-palace'},
+    {narrator:'<span class="character">Fin McSpeed</span> races through pages, getting paper cuts.',speech:{who:'🦈 Fin McSpeed',text:'Even on paper I\'m fastest! Race me through this calculation!'},item:'🏊',sceneType:'sky-rainbow'},
+    {narrator:'The <span class="character">Misfit Band</span> plays as pages fly like confetti!',speech:{who:'🦝 Boom',text:'ONE MORE SONG! ONE MORE PUZZLE! LET\'S GOOOO!'},item:'🎵',sceneType:'dragon-phoenix'},
+    {narrator:'Every friend from every quest gathers. Even <span class="character">Sgt. Whiskers</span>.',speech:null,item:'❤️',sceneType:'star-bridge'},
+    {narrator:'The Book asks you to <span class="highlight">write the final line</span>. Your pencil glows.',speech:null,item:'✏️',sceneType:'star-gates'},
+    {narrator:'You write: <span class="highlight">"And the fox was never afraid of numbers again."</span> THE END… or is it? 😉',speech:{who:'📖 The Book',text:'Open me anytime. You\'re part of the story now. Forever.'},item:'👑',sceneType:'star-heart'},
+  ]
+}
+];
+
+// ======== STATE ========
+let state=load();
+let currentQ={a:0,b:0};
+let hintUsed=false,awaitNext=false;
+
+const $=id=>document.getElementById(id);
+
+// ======== INIT ========
+render();
+
+// ======== CORE RENDER ========
+function render(){
+  // Clamp world/step to valid bounds
+  if(state.world>=WORLDS.length)state.world=WORLDS.length-1;
+  if(state.step<0)state.step=0;
+
+  const w=WORLDS[state.world];
+  const step=state.step;
+
+  // Sky
+  $('sky').style.background=w.sky;
+  $('worldName').textContent=w.name;
+
+  // Stats
+  $('gemCount').textContent=state.gems;
+  $('streakCount').textContent=state.streak;
+
+  // Path
+  renderPath();
+
+  // If chapter complete (check BEFORE accessing scene)
+  if(step>=10){
+    showChapterComplete();return;
+  }
+
+  const scene=w.scenes[step];
+  if(!scene){showChapterComplete();return;}
+
+  // Story
+  $('questionArea').style.display='block';
+  $('chapterComplete').classList.remove('show');
+
+  $('storyNarrator').innerHTML=scene.narrator;
+
+  if(scene.speech){
+    $('speechBubble').style.display='block';
+    $('speechWho').textContent=scene.speech.who;
+    $('speechText').textContent=scene.speech.text;
+  } else {
+    $('speechBubble').style.display='none';
+  }
+
+  // Items collected so far this chapter
+  renderItems();
+
+  // Draw scene
+  drawScene(scene.sceneType,step);
+
+  // Generate question
+  generateQuestion(w.tables);
+  $('qPrompt').textContent=currentQ.a+' × '+currentQ.b;
+
+  // Reset input
+  resetInput();
+}
+
+function renderPath(){
+  const bar=$('pathBar');
+  bar.innerHTML='';
+  const total=10;
+  for(let i=0;i<total;i++){
+    const s=document.createElement('div');
+    s.className='path-step'+(i<state.step?' done':'')+(i===state.step?' current':'');
+    bar.appendChild(s);
+  }
+  // Fox marker
+  const fox=document.createElement('div');
+  fox.className='path-fox';
+  const pct=state.step>=10?96:(state.step/total*92+4);
+  fox.style.left=pct+'%';
+  fox.textContent='🦊';
+  bar.appendChild(fox);
+
+  $('pathLabel').textContent='Step '+(Math.min(state.step+1,10))+' of 10 — '+WORLDS[state.world].name;
+}
+
+function renderItems(){
+  const c=$('itemsCollected');c.innerHTML='';
+  const w=WORLDS[state.world];
+  for(let i=0;i<state.step;i++){
+    const item=w.scenes[i].item;
+    if(item){const sp=document.createElement('span');sp.className='collected-item';sp.textContent=item;c.appendChild(sp)}
+  }
+}
+
+function generateQuestion(tables){
+  const table=tables[Math.floor(Math.random()*tables.length)];
+  // Weighted toward weaker facts
+  const weights=[];
+  for(let i=1;i<=12;i++){
+    const key=fk(table,i),d=state.facts[key];
+    if(!d)weights.push({n:i,w:5});
+    else{const r=d.correct/Math.max(d.attempts,1);weights.push({n:i,w:r>=.9&&d.attempts>=3?1:r>=.6?3:6})}
+  }
+  const total=weights.reduce((s,x)=>s+x.w,0);
+  let r=Math.random()*total,pick=weights[0].n;
+  for(const x of weights){r-=x.w;if(r<=0){pick=x.n;break}}
+  currentQ={a:table,b:pick};
+  if(Math.random()>.5){currentQ={a:pick,b:table}}
+}
+
+function resetInput(){
+  hintUsed=false;awaitNext=false;
+  $('answerInput').value='';$('answerInput').className='answer-input';$('answerInput').disabled=false;
+  $('feedbackText').textContent='';$('feedbackText').className='feedback-text';
+  $('hintText').textContent='';$('hintBtn').style.display='inline-block';$('showBtn').style.display='inline-block';
+  $('visualHint').classList.remove('show');$('visualHint').innerHTML='';
+  $('answerInput').focus();
+}
+
+// ======== ANSWER ========
+$('answerInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    if(awaitNext)return;
+    checkAnswer();
+  }
+});
+
+function checkAnswer(){
+  const val=parseInt($('answerInput').value);if(isNaN(val))return;
+  const correct=currentQ.a*currentQ.b;
+  const key=fk(currentQ.a,currentQ.b);
+  if(!state.facts[key])state.facts[key]={correct:0,attempts:0};
+  state.facts[key].attempts++;
+
+  if(val===correct){
+    state.facts[key].correct++;
+    state.streak++;
+    if(state.streak>state.bestStreak)state.bestStreak=state.streak;
+    state.totalCorrect++;
+    let gems=2+Math.floor(state.streak/3);if(hintUsed)gems=Math.max(1,Math.floor(gems/2));
+    state.gems+=gems;
+    $('answerInput').className='answer-input correct';
+    const msgs=["Yes! 🎉","Got it! ⭐","Perfect! ✨","Amazing! 🚀","Brilliant! 💫"];
+    $('feedbackText').textContent=msgs[Math.floor(Math.random()*msgs.length)]+' +'+gems+' 💎';
+    $('feedbackText').className='feedback-text correct-fb';
+    if(state.streak%5===0)showConfetti();
+    playCorrectSfx();
+    awaitNext=true;$('answerInput').disabled=true;
+
+    // Advance story
+    setTimeout(()=>{
+      state.step++;
+      // Collect item
+      const scene=WORLDS[state.world].scenes[state.step-1];
+      if(scene&&scene.item&&!state.collectedItems.includes(scene.item)){
+        state.collectedItems.push(scene.item);
+      }
+      save();render();checkDenNotif();
+    },1100);
+
+  } else {
+    state.streak=0;
+    $('answerInput').className='answer-input wrong';
+    const msgs=["Not quite!","Almost!","Try again!","Keep going!"];
+    $('feedbackText').textContent=msgs[Math.floor(Math.random()*msgs.length)]+' The answer is '+correct;
+    $('feedbackText').className='feedback-text wrong-fb';
+    playWrongSfx();
+    showVisualHint();
+    awaitNext=true;$('answerInput').disabled=true;
+    setTimeout(()=>{
+      // Guard: if we've moved on (chapter complete, etc.), don't re-render question
+      if(state.step>=10)return;
+      generateQuestion(WORLDS[state.world].tables);
+      $('qPrompt').textContent=currentQ.a+' × '+currentQ.b;
+      resetInput();
+    },2800);
+  }
+  save();
+  $('gemCount').textContent=state.gems;
+  $('streakCount').textContent=state.streak;
+}
+
+// ======== HINTS ========
+$('hintBtn').addEventListener('click',()=>{
+  if(hintUsed)return;hintUsed=true;$('hintBtn').style.display='none';
+  $('hintText').innerHTML='💡 '+getStrategy(currentQ.a,currentQ.b);
+});
+
+$('showBtn').addEventListener('click',showVisualHint);
+
+function showVisualHint(){
+  if($('visualHint').classList.contains('show'))return;
+  $('visualHint').classList.add('show');$('showBtn').style.display='none';hintUsed=true;
+  const vh=$('visualHint');vh.innerHTML='';
+  const a=currentQ.a,b=currentQ.b;
+  const items=['🧁','⭐','🍎','🐱','🍪','🌸'];
+  const emoji=items[Math.floor(Math.random()*items.length)];
+  if(a*b<=60){
+    for(let g=0;g<a;g++){
+      const box=document.createElement('div');box.className='vh-group';
+      for(let i=0;i<b;i++){const sp=document.createElement('span');sp.className='vh-item';sp.textContent=emoji;box.appendChild(sp)}
+      vh.appendChild(box);
+    }
+    const lbl=document.createElement('div');lbl.className='vh-label';
+    lbl.textContent=a+' groups of '+b+' '+emoji;vh.appendChild(lbl);
+  } else {
+    const lbl=document.createElement('div');lbl.className='vh-label';
+    lbl.textContent='Think: '+a+' groups of '+b;vh.appendChild(lbl);
+  }
+}
+
+function getStrategy(a,b){
+  const sm=Math.min(a,b),lg=Math.max(a,b);
+  if(sm===1)return 'Anything × <strong>1</strong> stays the same!';
+  if(sm===2)return '<strong>Double it!</strong> '+lg+' + '+lg+' = <strong>'+(a*b)+'</strong>';
+  if(sm===3)return '<strong>Triple:</strong> double '+lg+' = <strong>'+(lg*2)+'</strong>, plus '+lg+' more = <strong>'+(a*b)+'</strong>';
+  if(sm===4)return '<strong>Double-double:</strong> '+lg+'→'+(lg*2)+'→<strong>'+(a*b)+'</strong>';
+  if(sm===5)return '<strong>Count by 5s</strong> up to the '+lg+'th: <strong>'+(a*b)+'</strong>!';
+  if(sm===6)return '<strong>Split it:</strong> 5×'+lg+' = '+(5*lg)+', plus 1×'+lg+' = '+lg+'. Total: <strong>'+(a*b)+'</strong>';
+  if(sm===7)return '<strong>Split:</strong> 5×'+lg+' = '+(5*lg)+' + 2×'+lg+' = '+(2*lg)+' = <strong>'+(a*b)+'</strong>';
+  if(sm===8)return '<strong>Double³:</strong> '+lg+'→'+(lg*2)+'→'+(lg*4)+'→<strong>'+(a*b)+'</strong>';
+  if(sm===9)return '<strong>9s trick:</strong> '+lg+'×10 = '+(lg*10)+' minus '+lg+' = <strong>'+(a*b)+'</strong>';
+  if(sm===10)return '<strong>Add a zero:</strong> <strong>'+(a*b)+'</strong>!';
+  if(sm===11)return '<strong>11s:</strong> '+lg+'×10 + '+lg+' = '+(lg*10)+'+'+lg+' = <strong>'+(a*b)+'</strong>';
+  if(sm===12)return '<strong>12s:</strong> '+lg+'×10 + '+lg+'×2 = '+(lg*10)+'+'+(lg*2)+' = <strong>'+(a*b)+'</strong>';
+  return 'Break it into parts you know!';
+}
+
+// ======== CHAPTER COMPLETE ========
+function showChapterComplete(){
+  $('questionArea').style.display='none';
+  $('speechBubble').style.display='none';
+  $('storyNarrator').innerHTML='';
+  $('chapterComplete').classList.add('show');
+  const w=WORLDS[state.world];
+  $('chIcon').textContent=w.icon;
+  $('chTitle').textContent=w.name+' Complete!';
+    const endings=[
+    'The party is legendary! Bunny says it\'s the best birthday AND the best surprise ever! 🎂',
+    'Chef Bruno frames your recipe on the wall of fame! You\'re a baking LEGEND! 🧁',
+    'They rename the race "The Fox Prix" in your honor! Fin McSpeed actually smiles! 🏊',
+    'The ants build a tiny statue of you! It\'s the size of a pebble and absolutely adorable! 🐜',
+    'Best sleepover in HISTORY! Boo becomes your permanent house ghost (but a friendly one)! 👻',
+    'Waddles and you open a cloud restaurant together! Five stars — or rather, nine! 👨‍🍳',
+    'The Misfits go on a world tour! First stop: every world you\'ve ever visited! 🎸',
+    'Sgt. Whiskers sleeps on your bed every night now. The Goblin starts growing flowers instead. 🧸',
+    'You get a pilot\'s license for ALL of space! Zorp visits every weekend! 🚀',
+    'The book glows on your shelf forever. When you open it, your friends wave from the pages. 📖'
+  ];
+  $('chBody').innerHTML=(endings[state.world]||endings[0])+'<br><br>Items collected: '+state.collectedItems.slice(-10).join(' ');
+  $('chReward').textContent='🏆 +50 bonus gems!';
+  if(!state.chapterBonuses.includes(state.world)){
+    state.chapterBonuses.push(state.world);
+    state.gems+=50;$('gemCount').textContent=state.gems;
+    save();
+  }
+  showConfetti();
+  playChapterFanfare();
+
+  if(state.world>=WORLDS.length-1){
+    $('chNextBtn').textContent='🎉 You finished the whole quest!';
+    $('chNextBtn').onclick=()=>{};
+  } else {
+    $('chNextBtn').textContent='Continue to '+WORLDS[state.world+1].name+' →';
+    $('chNextBtn').onclick=()=>{state.world++;state.step=0;save();render()};
+  }
+  renderItems();
+}
+
+// ======== SCENE DRAWING ========
+function drawScene(type,step){
+  const canvas=$('sceneCanvas');
+  const ctx=canvas.getContext('2d');
+  // Set actual resolution
+  canvas.width=560;canvas.height=180;
+  ctx.clearRect(0,0,560,180);
+
+  const scenes={
+    'forest-start':drawForest,
+    'forest-owl':drawForestOwl,
+    'forest-mushrooms':drawForestMushrooms,
+    'forest-squirrel':drawForestSquirrel,
+    'forest-stream':drawForestStream,
+    'forest-deer':drawForestDeer,
+    'forest-fireflies':drawForestFireflies,
+    'forest-badger':drawForestBadger,
+    'forest-door':drawForestDoor,
+    'forest-heart':drawForestHeart,
+    'cave-start':drawCave,
+    'cave-bat':drawCave,
+    'cave-amethyst':drawCaveAmethyst,
+    'cave-lake':drawCaveLake,
+    'cave-columns':drawCaveColumns,
+    'cave-mole':drawCave,
+    'cave-garden':drawCaveGarden,
+    'cave-spider':drawCaveSpider,
+    'cave-cathedral':drawCaveCathedral,
+    'cave-heart':drawCaveHeart,
+    'sky-start':drawSky,
+    'sky-pegasus':drawSky,
+    'sky-flowers':drawSkyFlowers,
+    'sky-songbird':drawSkySongbird,
+    'sky-rainbow':drawSkyRainbow,
+    'sky-sheep':drawSkySheep,
+    'sky-waterfall':drawSky,
+    'sky-turtle':drawSky,
+    'sky-palace':drawSkyPalace,
+    'sky-heart':drawSkyHeart,
+    'dragon-start':drawDragon,
+    'dragon-baby':drawDragonBaby,
+    'dragon-lava':drawDragonLava,
+    'dragon-guard':drawDragon,
+    'dragon-eggs':drawDragonEggs,
+    'dragon-elder':drawDragonElder,
+    'dragon-treasure':drawDragonTreasure,
+    'dragon-phoenix':drawDragonPhoenix,
+    'dragon-summit':drawDragonSummit,
+    'dragon-heart':drawDragonHeart,
+    'star-start':drawStars,
+    'star-cat':drawStarCat,
+    'star-corridor':drawStarCorridor,
+    'star-alien':drawStars,
+    'star-nebula':drawStarNebula,
+    'star-rabbit':drawStars,
+    'star-bridge':drawStarBridge,
+    'star-sprite':drawStars,
+    'star-gates':drawStarGates,
+    'star-heart':drawStarHeart,
+  };
+
+  (scenes[type]||drawGeneric)(ctx);
+}
+
+// --- Drawing helpers ---
+function drawGround(ctx,color,h){
+  ctx.fillStyle=color;
+  ctx.beginPath();ctx.moveTo(0,180-h);
+  for(let x=0;x<=560;x+=40)ctx.quadraticCurveTo(x+20,180-h-8+Math.random()*16,x+40,180-h);
+  ctx.lineTo(560,180);ctx.lineTo(0,180);ctx.fill();
+}
+
+function drawTree(ctx,x,h,color){
+  ctx.fillStyle='#3d2b1a';ctx.fillRect(x-4,180-h,8,h*0.4);
+  ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,180-h,h*0.35,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=0.6;
+  ctx.fillStyle=color;
+  ctx.beginPath();ctx.arc(x-h*0.15,180-h+h*0.1,h*0.25,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+}
+
+function drawMountain(ctx,x,w,h,color){
+  ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x,180);ctx.lineTo(x+w/2,180-h);ctx.lineTo(x+w,180);ctx.fill();
+}
+
+function drawStar(ctx,x,y,r,color){
+  ctx.fillStyle=color;ctx.beginPath();
+  for(let i=0;i<5;i++){
+    const a=Math.PI/2+i*Math.PI*2/5;
+    ctx.lineTo(x+Math.cos(a)*r,y-Math.sin(a)*r);
+    const b=a+Math.PI/5;
+    ctx.lineTo(x+Math.cos(b)*r*.4,y-Math.sin(b)*r*.4);
+  }
+  ctx.fill();
+}
+
+function drawCircleGlow(ctx,x,y,r,color){
+  const g=ctx.createRadialGradient(x,y,0,x,y,r);
+  g.addColorStop(0,color);g.addColorStop(1,'transparent');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+}
+
+// ---- FOREST SCENES ----
+function drawForest(ctx){
+  drawGround(ctx,'#1a3d20',50);drawGround(ctx,'#234a28',30);
+  for(let i=0;i<8;i++)drawTree(ctx,30+i*70+Math.random()*30,60+Math.random()*40,'rgb('+Math.floor(20+Math.random()*30)+','+Math.floor(80+Math.random()*60)+','+Math.floor(30+Math.random()*30)+')');
+  drawCircleGlow(ctx,280,100,60,'rgba(200,255,200,0.08)');
+  // Fox
+  ctx.font='28px serif';ctx.fillText('🦊',260,160);
+}
+function drawForestOwl(ctx){drawForest(ctx);ctx.font='32px serif';ctx.fillText('🦉',340,70)}
+function drawForestMushrooms(ctx){
+  drawForest(ctx);
+  for(let i=0;i<6;i++){ctx.font='20px serif';ctx.fillText('🍄',80+i*80,155);drawCircleGlow(ctx,90+i*80,155,15,'rgba(150,255,150,0.15)')}
+}
+function drawForestSquirrel(ctx){drawForest(ctx);ctx.font='28px serif';ctx.fillText('🐿️',360,140)}
+function drawForestStream(ctx){
+  drawGround(ctx,'#1a3d20',50);
+  ctx.fillStyle='rgba(100,180,255,0.3)';ctx.fillRect(0,140,560,15);
+  ctx.fillStyle='rgba(150,210,255,0.2)';ctx.fillRect(0,142,560,8);
+  for(let i=0;i<6;i++){ctx.fillStyle='#556b55';ctx.beginPath();ctx.arc(50+i*100,145,12,0,Math.PI*2);ctx.fill()}
+  drawForest(ctx);
+}
+function drawForestDeer(ctx){drawForest(ctx);ctx.font='32px serif';ctx.fillText('🦌',380,130)}
+function drawForestFireflies(ctx){
+  drawForest(ctx);
+  for(let i=0;i<12;i++){drawCircleGlow(ctx,Math.random()*540+10,30+Math.random()*120,8,'rgba(255,255,150,0.25)')}
+}
+function drawForestBadger(ctx){drawForest(ctx);ctx.font='26px serif';ctx.fillText('🦡',180,150);drawCircleGlow(ctx,200,130,25,'rgba(255,200,100,0.2)')}
+function drawForestDoor(ctx){
+  drawForest(ctx);
+  ctx.fillStyle='#4a3520';ctx.fillRect(250,80,60,80);
+  ctx.fillStyle='#6b4c30';ctx.beginPath();ctx.arc(280,80,30,Math.PI,0);ctx.fill();
+  ctx.fillStyle='#ffc857';ctx.beginPath();ctx.arc(300,120,4,0,Math.PI*2);ctx.fill();
+  drawCircleGlow(ctx,280,120,40,'rgba(255,200,87,0.15)');
+}
+function drawForestHeart(ctx){
+  drawForest(ctx);drawCircleGlow(ctx,280,90,50,'rgba(100,255,150,0.2)');
+  ctx.font='36px serif';ctx.fillText('💚',262,105);
+}
+
+// ---- CAVE SCENES ----
+function drawCave(ctx){
+  ctx.fillStyle='#0d0a2e';ctx.fillRect(0,0,560,180);
+  // Stalactites
+  for(let i=0;i<10;i++){
+    ctx.fillStyle='#2a2050';ctx.beginPath();
+    const x=20+i*56;ctx.moveTo(x-10,0);ctx.lineTo(x,20+Math.random()*30);ctx.lineTo(x+10,0);ctx.fill();
+  }
+  // Crystals
+  const crystalColors=['#a855f7','#6366f1','#8b5cf6','#c084fc'];
+  const crystalGlows=['rgba(168,85,247,0.15)','rgba(99,102,241,0.15)','rgba(139,92,246,0.15)','rgba(192,132,252,0.15)'];
+  for(let i=0;i<6;i++){
+    ctx.fillStyle=crystalColors[i%crystalColors.length];
+    const x=40+i*90+Math.random()*30,y=140+Math.random()*20;
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+5,y-20-Math.random()*15);ctx.lineTo(x+10,y);ctx.fill();
+    drawCircleGlow(ctx,x+5,y-10,12,crystalGlows[i%crystalGlows.length]);
+  }
+  drawGround(ctx,'#1a1540',35);ctx.font='28px serif';ctx.fillText('🦊',260,155);
+}
+function drawCaveAmethyst(ctx){drawCave(ctx);for(let i=0;i<5;i++){ctx.font='20px serif';ctx.fillText('💜',60+i*100,40+Math.random()*20)}}
+function drawCaveLake(ctx){
+  drawCave(ctx);ctx.fillStyle='rgba(80,60,200,0.25)';ctx.fillRect(0,145,560,35);
+  ctx.fillStyle='rgba(120,100,255,0.1)';ctx.fillRect(0,150,560,20);
+}
+function drawCaveColumns(ctx){drawCave(ctx);for(let i=0;i<5;i++){ctx.fillStyle='rgba(170,140,255,0.3)';ctx.fillRect(50+i*110,40,12,140)}}
+function drawCaveGarden(ctx){drawCave(ctx);for(let i=0;i<8;i++){ctx.font='16px serif';ctx.fillText('🌸',40+i*65,135+Math.random()*15);drawCircleGlow(ctx,50+i*65,140,10,'rgba(255,150,200,0.12)')}}
+function drawCaveSpider(ctx){
+  drawCave(ctx);
+  ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
+  for(let i=0;i<6;i++){ctx.beginPath();ctx.moveTo(280,0);ctx.lineTo(50+i*100,180);ctx.stroke()}
+  ctx.font='24px serif';ctx.fillText('🕷️',270,60);
+}
+function drawCaveCathedral(ctx){
+  drawCave(ctx);
+  for(let i=0;i<12;i++){
+    const r=180+Math.random()*75,g=100+Math.random()*75;
+    drawCircleGlow(ctx,Math.random()*560,Math.random()*180,20,'rgba('+Math.floor(r)+','+Math.floor(g)+',255,0.08)');
+  }
+}
+function drawCaveHeart(ctx){drawCave(ctx);drawCircleGlow(ctx,280,85,45,'rgba(100,100,255,0.2)');ctx.font='34px serif';ctx.fillText('💙',264,100)}
+
+// ---- SKY SCENES ----
+function drawSky(ctx){
+  // Clouds
+  for(let i=0;i<6;i++){
+    ctx.fillStyle='rgba(255,255,255,'+(0.05+Math.random()*0.1)+')';
+    const x=Math.random()*520,y=20+Math.random()*80;
+    ctx.beginPath();ctx.arc(x,y,25,0,Math.PI*2);ctx.arc(x+20,y-5,20,0,Math.PI*2);ctx.arc(x+40,y,22,0,Math.PI*2);ctx.fill();
+  }
+  // Islands
+  ctx.fillStyle='#4a8c5c';
+  ctx.beginPath();ctx.ellipse(140,155,70,18,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#5a9c6c';
+  ctx.beginPath();ctx.ellipse(400,140,80,20,0,0,Math.PI*2);ctx.fill();
+  ctx.font='28px serif';ctx.fillText('🦊',120,150);
+}
+function drawSkyFlowers(ctx){drawSky(ctx);for(let i=0;i<7;i++){ctx.font='16px serif';ctx.fillText('🌺',70+i*60,140+Math.random()*10)}}
+function drawSkySongbird(ctx){drawSky(ctx);ctx.font='24px serif';ctx.fillText('🐦',350,60)}
+function drawSkyRainbow(ctx){
+  drawSky(ctx);
+  const colors=['#ff0000','#ff8800','#ffff00','#00cc00','#0066ff','#8800ff'];
+  colors.forEach((c,i)=>{ctx.strokeStyle=c;ctx.lineWidth=3;ctx.globalAlpha=0.25;ctx.beginPath();ctx.arc(280,200,100+i*6,Math.PI,0);ctx.stroke()});
+  ctx.globalAlpha=1;
+}
+function drawSkySheep(ctx){drawSky(ctx);for(let i=0;i<4;i++){ctx.font='20px serif';ctx.fillText('🐑',340+i*40,130+Math.random()*10)}}
+function drawSkyPalace(ctx){
+  drawSky(ctx);
+  ctx.fillStyle='rgba(255,255,255,0.12)';
+  ctx.fillRect(230,40,100,80);ctx.fillRect(250,20,60,30);
+  ctx.fillStyle='rgba(255,220,100,0.2)';ctx.beginPath();ctx.moveTo(250,20);ctx.lineTo(280,0);ctx.lineTo(310,20);ctx.fill();
+  drawCircleGlow(ctx,280,50,30,'rgba(255,220,150,0.15)');
+}
+function drawSkyHeart(ctx){drawSky(ctx);drawCircleGlow(ctx,280,80,45,'rgba(255,230,100,0.2)');ctx.font='34px serif';ctx.fillText('💛',264,95)}
+
+// ---- DRAGON SCENES ----
+function drawDragon(ctx){
+  drawMountain(ctx,0,200,140,'#5a2020');drawMountain(ctx,150,250,160,'#6a2a2a');drawMountain(ctx,360,200,130,'#5a2020');
+  drawGround(ctx,'#3a1a1a',35);
+  ctx.fillStyle='rgba(255,100,30,0.1)';ctx.fillRect(0,165,560,15);
+  ctx.font='28px serif';ctx.fillText('🦊',260,150);
+}
+function drawDragonBaby(ctx){drawDragon(ctx);ctx.font='28px serif';ctx.fillText('🐲',350,140)}
+function drawDragonLava(ctx){
+  drawDragon(ctx);
+  for(let i=0;i<4;i++){ctx.fillStyle='rgba(255,120,30,0.2)';ctx.beginPath();ctx.arc(80+i*130,160,20,0,Math.PI*2);ctx.fill();drawCircleGlow(ctx,80+i*130,160,18,'rgba(255,150,50,0.15)')}
+}
+function drawDragonEggs(ctx){drawDragon(ctx);for(let i=0;i<5;i++){ctx.font='18px serif';ctx.fillText('🥚',150+i*55,148)}}
+function drawDragonElder(ctx){drawDragon(ctx);ctx.font='42px serif';ctx.fillText('🐉',340,100)}
+function drawDragonTreasure(ctx){drawDragon(ctx);for(let i=0;i<8;i++){ctx.font='14px serif';ctx.fillText('🪙',100+i*50,155+Math.random()*10)}}
+function drawDragonPhoenix(ctx){drawDragon(ctx);drawCircleGlow(ctx,350,60,35,'rgba(255,150,50,0.2)');ctx.font='32px serif';ctx.fillText('🔥',335,75)}
+function drawDragonSummit(ctx){
+  drawDragon(ctx);drawMountain(ctx,180,200,170,'#7a3030');
+  ctx.fillStyle='rgba(255,100,30,0.15)';ctx.beginPath();ctx.arc(280,30,30,0,Math.PI*2);ctx.fill();
+  drawCircleGlow(ctx,280,30,40,'rgba(255,150,50,0.12)');
+}
+function drawDragonHeart(ctx){drawDragon(ctx);drawCircleGlow(ctx,280,85,45,'rgba(255,100,80,0.2)');ctx.font='34px serif';ctx.fillText('❤️',264,100)}
+
+// ---- STAR SCENES ----
+function drawStars(ctx){
+  ctx.fillStyle='#05051a';ctx.fillRect(0,0,560,180);
+  for(let i=0;i<30;i++){drawStar(ctx,Math.random()*560,Math.random()*180,1+Math.random()*2,'rgba(255,255,255,'+(0.2+Math.random()*0.5)+')')}
+  drawCircleGlow(ctx,280,90,40,'rgba(100,100,255,0.06)');
+  ctx.font='28px serif';ctx.fillText('🦊',260,150);
+}
+function drawStarCat(ctx){drawStars(ctx);ctx.font='26px serif';ctx.fillText('🐱',350,90);drawCircleGlow(ctx,365,85,15,'rgba(200,150,255,0.15)')}
+function drawStarCorridor(ctx){
+  drawStars(ctx);
+  for(let i=0;i<8;i++){const x=30+i*65,y=40+Math.random()*60;drawStar(ctx,x,y,4,'rgba(255,220,100,0.4)');if(i>0){ctx.strokeStyle='rgba(255,220,100,0.1)';ctx.beginPath();ctx.moveTo(30+(i-1)*65,40);ctx.lineTo(x,y);ctx.stroke()}}
+}
+function drawStarNebula(ctx){
+  drawStars(ctx);
+  drawCircleGlow(ctx,200,80,50,'rgba(255,100,200,0.1)');drawCircleGlow(ctx,350,70,40,'rgba(100,150,255,0.1)');drawCircleGlow(ctx,280,100,35,'rgba(200,100,255,0.08)');
+}
+function drawStarBridge(ctx){
+  drawStars(ctx);
+  ctx.strokeStyle='rgba(255,220,100,0.2)';ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(0,140);ctx.quadraticCurveTo(280,90,560,140);ctx.stroke();
+}
+function drawStarGates(ctx){
+  drawStars(ctx);
+  ctx.fillStyle='rgba(255,220,100,0.15)';ctx.fillRect(220,30,10,140);ctx.fillRect(330,30,10,140);
+  ctx.beginPath();ctx.arc(280,30,60,Math.PI,0);ctx.fillStyle='rgba(255,220,100,0.08)';ctx.fill();
+  drawCircleGlow(ctx,280,80,30,'rgba(255,220,100,0.1)');
+}
+function drawStarHeart(ctx){
+  drawStars(ctx);
+  for(let i=0;i<20;i++){drawStar(ctx,Math.random()*560,Math.random()*180,2+Math.random()*3,'rgba(255,220,100,'+(0.15+Math.random()*0.2)+')')}
+  drawCircleGlow(ctx,280,85,50,'rgba(255,220,100,0.2)');ctx.font='36px serif';ctx.fillText('👑',264,100);
+}
+
+function drawGeneric(ctx){drawForest(ctx)}
+
+// ======== MAP ========
+$('mapBtn').addEventListener('click',()=>{$('mapOverlay').classList.add('show');renderMap()});
+$('mapClose').addEventListener('click',()=>$('mapOverlay').classList.remove('show'));
+$('mapOverlay').addEventListener('click',e=>{if(e.target===$('mapOverlay'))$('mapOverlay').classList.remove('show')});
+
+function renderMap(){
+  const mw=$('mapWorlds');mw.innerHTML='';
+  WORLDS.forEach((w,i)=>{
+    const unlocked=i<=state.world;
+    const completed=i<state.world||(i===state.world&&state.step>=10);
+    const current=i===state.world&&state.step<10;
+    const div=document.createElement('div');
+    div.className='map-world'+(current?' current':'')+(completed?' completed':'')+(!unlocked?' locked':'');
+    div.innerHTML='<div class="mw-icon">'+w.icon+'</div><div class="mw-info"><div class="mw-name">'+w.name+'</div><div class="mw-desc">'+w.desc+'</div><div class="mw-stars">Tables: '+w.tables.join(', ')+(completed?' ✅':current?' (in progress)':unlocked?'':' 🔒')+'</div></div>';
+    if(unlocked&&!current)div.addEventListener('click',()=>{state.world=i;state.step=completed?0:state.step;save();$('mapOverlay').classList.remove('show');render()});
+    mw.appendChild(div);
+  });
+  $('mapGems').textContent=state.gems;
+  $('mapCorrect').textContent=state.totalCorrect;
+  $('mapStreak').textContent=state.bestStreak;
+}
+
+// ======== CONFETTI ========
+function showConfetti(){
+  const el=$('celebration');el.innerHTML='';el.classList.add('show');
+  const cols=['#ffc857','#ff7eb3','#7cffcb','#7ec8e3','#c084fc','#fff'];
+  for(let i=0;i<45;i++){
+    const c=document.createElement('div');c.className='confetti-piece';
+    c.style.left=Math.random()*100+'%';c.style.background=cols[Math.floor(Math.random()*cols.length)];
+    c.style.animationDelay=Math.random()*.5+'s';c.style.animationDuration=(1+Math.random())+'s';
+    c.style.width=(6+Math.random()*8)+'px';c.style.height=(6+Math.random()*8)+'px';
+    el.appendChild(c);
+  }
+  setTimeout(()=>el.classList.remove('show'),2000);
+}
+
+// ======== STORAGE ========
+function fk(a,b){return Math.min(a,b)+'x'+Math.max(a,b)}
+function defaults(){return{world:0,step:0,gems:0,streak:0,bestStreak:0,totalCorrect:0,facts:{},collectedItems:[],chapterBonuses:[],tablesLearned:[],den:{owned:[],theme:'th_forest'}}}
+function load(){try{const r=localStorage.getItem(STORE);if(r)return Object.assign(defaults(),JSON.parse(r))}catch(e){}return defaults()}
+function save(){try{localStorage.setItem(STORE,JSON.stringify(state))}catch(e){}}
+
+$('resetLink').addEventListener('click',()=>{
+  if(confirm('Reset ALL progress? You\'ll start the story over from the beginning.')){
+    localStorage.removeItem(STORE);state=defaults();render();
+  }
+});
+
+// ======== FOX DEN SYSTEM ========
+const DEN_ITEMS={
+  furniture:[
+    {id:'bed',icon:'🛏️',name:'Cozy Bed',price:15,x:60,y:220,sz:40},
+    {id:'chair',icon:'🪑',name:'Armchair',price:10,x:350,y:230,sz:32},
+    {id:'table',icon:'🪵',name:'Wood Table',price:12,x:260,y:240,sz:30},
+    {id:'bookshelf',icon:'📚',name:'Bookshelf',price:20,x:420,y:160,sz:36},
+    {id:'lamp',icon:'🪔',name:'Warm Lamp',price:8,x:160,y:180,sz:28},
+    {id:'piano',icon:'🎹',name:'Piano',price:40,x:100,y:200,sz:38},
+    {id:'rug',icon:'🟤',name:'Soft Rug',price:10,x:260,y:270,sz:50},
+    {id:'clock',icon:'🕰️',name:'Old Clock',price:18,x:300,y:110,sz:28},
+    {id:'fireplace',icon:'🔥',name:'Fireplace',price:30,x:440,y:200,sz:42},
+  ],
+  deco:[
+    {id:'plant',icon:'🪴',name:'House Plant',price:6,x:480,y:230,sz:30},
+    {id:'painting',icon:'🖼️',name:'Painting',price:14,x:180,y:100,sz:32},
+    {id:'stars_d',icon:'⭐',name:'Star Lights',price:10,x:100,y:80,sz:20},
+    {id:'crystals',icon:'💎',name:'Crystal Set',price:16,x:380,y:260,sz:24},
+    {id:'candles',icon:'🕯️',name:'Candles',price:8,x:200,y:240,sz:22},
+    {id:'globe',icon:'🌍',name:'Globe',price:12,x:460,y:140,sz:28},
+    {id:'flowers',icon:'💐',name:'Flowers',price:7,x:320,y:180,sz:26},
+    {id:'banner',icon:'🎏',name:'Fox Banner',price:15,x:260,y:80,sz:30},
+    {id:'moon',icon:'🌙',name:'Moon Light',price:20,x:70,y:90,sz:26},
+  ],
+  pets:[
+    {id:'cat',icon:'🐱',name:'Kitten',price:25,x:200,y:260,sz:28},
+    {id:'hamster',icon:'🐹',name:'Hamster',price:15,x:340,y:270,sz:22},
+    {id:'bunny',icon:'🐰',name:'Bunny',price:20,x:140,y:265,sz:26},
+    {id:'bird',icon:'🐦',name:'Songbird',price:18,x:420,y:120,sz:22},
+    {id:'fish',icon:'🐠',name:'Fish Tank',price:22,x:470,y:180,sz:30},
+    {id:'turtle',icon:'🐢',name:'Tiny Turtle',price:16,x:300,y:275,sz:24},
+  ],
+  themes:[
+    {id:'th_forest',icon:'🌲',name:'Forest',price:0,bg:'#4a7a55',wall:'#6aaa78',floor:'#c49a6c'},
+    {id:'th_ocean',icon:'🌊',name:'Ocean',price:30,bg:'#3a6a8a',wall:'#5090b0',floor:'#b8a882'},
+    {id:'th_sky',icon:'☁️',name:'Sky',price:30,bg:'#6aa0d0',wall:'#90c0e8',floor:'#d4b088'},
+    {id:'th_night',icon:'🌙',name:'Night',price:25,bg:'#2a2a50',wall:'#3a3a6a',floor:'#6a6a80'},
+    {id:'th_candy',icon:'🍬',name:'Candy',price:35,bg:'#d07aaa',wall:'#e8a0c8',floor:'#f0c8d8'},
+    {id:'th_space',icon:'🚀',name:'Space',price:40,bg:'#1a1a40',wall:'#2a2a60',floor:'#4a4a70'},
+  ]
+};
+
+const VISITORS=[
+  {who:'🐰 Bunny',msg:' stopped by with leftover cake!'},
+  {who:'🐻 Chef Bruno',msg:' is inspecting your kitchen area.'},
+  {who:'🦈 Fin McSpeed',msg:' is napping on your rug.'},
+  {who:'🐜 General Crumb',msg:' salutes you from the bookshelf!'},
+  {who:'👻 Boo',msg:' is floating through your walls. Classic Boo.'},
+  {who:'🐧 Waddles',msg:' brought you cloud cookies!'},
+  {who:'🦝 Boom',msg:' is drumming on your table.'},
+  {who:'🐱 Sgt. Whiskers',msg:' is asleep on your chair.'},
+  {who:'🤖 ROBO',msg:' is calculating optimal furniture layout.'},
+  {who:'🐲 Flavor',msg:' wanted to taste-test your pantry.'},
+  {who:'👽 Zorp',msg:' teleported in to say hi!'},
+  {who:'📖 The Book',msg:' opened itself on your table.'},
+];
+
+let denTab='furniture';
+
+// Init den state
+if(!state.den) state.den={owned:[],theme:'th_forest'};
+
+$('denBtn').addEventListener('click',()=>{
+  $('denOverlay').classList.add('show');
+  $('denGems').textContent=state.gems;
+  renderDen();
+  renderDenShop();
+  rollVisitor();
+});
+$('denClose').addEventListener('click',()=>$('denOverlay').classList.remove('show'));
+
+document.querySelectorAll('.den-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.den-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    denTab=tab.dataset.dentab;
+    renderDenShop();
+  });
+});
+
+function rollVisitor(){
+  // Show a visitor if they've completed at least 1 world
+  const vis=$('denVisitor');
+  if(state.world<1&&state.step<5){vis.classList.remove('show');return}
+  // Pick a random visitor
+  const v=VISITORS[Math.floor(Math.random()*VISITORS.length)];
+  $('denVisitorWho').textContent=v.who;
+  $('denVisitorMsg').textContent=v.msg;
+  vis.classList.add('show');
+}
+
+function renderDenShop(){
+  const shop=$('denShop');
+  shop.innerHTML='';
+  const items=DEN_ITEMS[denTab]||[];
+  items.forEach(item=>{
+    const owned=state.den.owned.includes(item.id);
+    const equipped=denTab==='themes'&&state.den.theme===item.id;
+    const canAfford=state.gems>=item.price;
+    const div=document.createElement('div');
+    div.className='shop-item'+(owned?' owned':'')+(equipped?' equipped':'')
+      +(!owned&&!canAfford?' cant-afford':'');
+    div.innerHTML='<div class="shop-icon">'+item.icon+'</div>'
+      +'<div class="shop-name">'+item.name+'</div>'
+      +'<div class="shop-price'+(owned?' owned-label':'')+'">'+
+      (owned?(denTab==='themes'?(equipped?'✓ Active':'Tap to use'):'✓ Owned'):'💎 '+item.price)+'</div>';
+    div.addEventListener('click',()=>buyOrEquip(item,denTab));
+    shop.appendChild(div);
+  });
+}
+
+function buyOrEquip(item,tab){
+  const owned=state.den.owned.includes(item.id);
+  if(owned){
+    if(tab==='themes'){
+      state.den.theme=item.id;
+      save();renderDen();renderDenShop();
+    }
+    return;
+  }
+  if(state.gems<item.price)return;
+  state.gems-=item.price;
+  state.den.owned.push(item.id);
+  save();
+  $('denGems').textContent=state.gems;
+  $('gemCount').textContent=state.gems;
+  renderDen();renderDenShop();
+}
+
+function renderDen(){
+  const canvas=$('denCanvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=520;canvas.height=320;
+  ctx.clearRect(0,0,520,320);
+
+  // Get theme colors
+  const themeId=state.den.theme||'th_forest';
+  const themes=DEN_ITEMS.themes;
+  const theme=themes.find(t=>t.id===themeId)||themes[0];
+
+  // Background / ceiling
+  ctx.fillStyle=theme.bg;
+  ctx.fillRect(0,0,520,320);
+
+  // Walls
+  ctx.fillStyle=theme.wall;
+  ctx.fillRect(0,0,520,200);
+
+  // Warm wall gradient overlay for depth
+  const wallGrad=ctx.createLinearGradient(0,0,0,200);
+  wallGrad.addColorStop(0,'rgba(255,220,150,0.08)');
+  wallGrad.addColorStop(1,'rgba(0,0,0,0.05)');
+  ctx.fillStyle=wallGrad;
+  ctx.fillRect(0,0,520,200);
+
+  // Baseboard
+  ctx.fillStyle='rgba(0,0,0,0.15)';
+  ctx.fillRect(0,196,520,8);
+
+  // Floor
+  ctx.fillStyle=theme.floor;
+  ctx.fillRect(0,200,520,120);
+
+  // Floor planks with subtle highlight
+  for(let y=210;y<320;y+=20){
+    ctx.strokeStyle='rgba(0,0,0,0.08)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(520,y);ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.04)';
+    ctx.beginPath();ctx.moveTo(0,y+1);ctx.lineTo(520,y+1);ctx.stroke();
+  }
+
+  // Window — bright and cheerful
+  // Window frame
+  ctx.fillStyle='rgba(180,140,100,0.6)';
+  ctx.fillRect(26,46,88,88);
+  // Sky through window
+  const skyGrad=ctx.createLinearGradient(30,50,30,130);
+  skyGrad.addColorStop(0,'#88c8f8');
+  skyGrad.addColorStop(1,'#c8e8ff');
+  ctx.fillStyle=skyGrad;
+  ctx.fillRect(30,50,80,80);
+  // Sun glow
+  ctx.fillStyle='rgba(255,240,180,0.5)';
+  ctx.beginPath();ctx.arc(90,65,15,0,Math.PI*2);ctx.fill();
+  // Window cross
+  ctx.strokeStyle='rgba(180,140,100,0.7)';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(70,50);ctx.lineTo(70,130);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(30,90);ctx.lineTo(110,90);ctx.stroke();
+  // Light beam from window
+  ctx.fillStyle='rgba(255,240,200,0.04)';
+  ctx.beginPath();ctx.moveTo(30,130);ctx.lineTo(0,320);ctx.lineTo(180,320);ctx.lineTo(110,130);ctx.fill();
+
+  // Draw owned items as HTML emoji (NOT canvas — canvas emoji are washed out)
+  const emojiLayer=$('denEmojis');
+  emojiLayer.innerHTML='';
+  const allPlaceable=[...DEN_ITEMS.furniture,...DEN_ITEMS.deco,...DEN_ITEMS.pets];
+  const ownedItems=allPlaceable.filter(i=>state.den.owned.includes(i.id))
+    .sort((a,b)=>a.y-b.y);
+
+  // Canvas is 520x320 but displayed at 100% width — emoji positions use percentages
+  function placeEmoji(icon,x,y,sz){
+    const el=document.createElement('div');
+    el.style.cssText='position:absolute;font-size:'+sz+'px;'
+      +'left:'+(x/520*100)+'%;top:'+(y/520*100*520/320)+'%;'
+      +'transform:translate(-50%,-50%);'
+      +'filter:drop-shadow(0 2px 4px rgba(0,0,0,0.3));'
+      +'line-height:1;';
+    el.textContent=icon;
+    emojiLayer.appendChild(el);
+  }
+
+  ownedItems.forEach(item=>{
+    // Shadow on canvas
+    ctx.fillStyle='rgba(0,0,0,0.12)';
+    ctx.beginPath();
+    ctx.ellipse(item.x,item.y+item.sz*0.4,item.sz*0.4,item.sz*0.12,0,0,Math.PI*2);
+    ctx.fill();
+    // Emoji as HTML
+    placeEmoji(item.icon,item.x,item.y,item.sz);
+  });
+
+  // Fox always present
+  ctx.fillStyle='rgba(0,0,0,0.1)';
+  ctx.beginPath();ctx.ellipse(258,278,16,5,0,0,Math.PI*2);ctx.fill();
+  placeEmoji('🦊',258,260,36);
+
+  // Warm ambient light overlay
+  const ambGrad=ctx.createRadialGradient(260,200,20,260,200,300);
+  ambGrad.addColorStop(0,'rgba(255,220,150,0.06)');
+  ambGrad.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=ambGrad;
+  ctx.fillRect(0,0,520,320);
+
+  // If no items, show a hint
+  if(ownedItems.length===0){
+    const hint=document.createElement('div');
+    hint.style.cssText='position:absolute;bottom:12%;left:0;width:100%;text-align:center;'
+      +'font-family:Fredoka,sans-serif;font-size:14px;color:rgba(255,255,255,0.5);pointer-events:none;';
+    hint.textContent='Earn gems in quests to decorate your den!';
+    emojiLayer.appendChild(hint);
+  }
+}
+
+// Show notification dot when they have enough gems for something new
+function checkDenNotif(){
+  const allItems=[...DEN_ITEMS.furniture,...DEN_ITEMS.deco,...DEN_ITEMS.pets,...DEN_ITEMS.themes];
+  const canBuy=allItems.some(i=>!state.den.owned.includes(i.id)&&state.gems>=i.price);
+  const notif=$('denNotif');
+  if(notif)notif.classList.toggle('show',canBuy);
+}
+// Check after every answer
+const origCheck=checkAnswer;
+
+// Also run on load
+checkDenNotif();
+
+// ======== STARS BG ========
+function createStars(){const bg=$('starsBg');for(let i=0;i<35;i++){const s=document.createElement('div');s.className='star-p';s.style.cssText='position:absolute;width:2px;height:2px;background:rgba(255,255,255,0.3);border-radius:50%;left:'+Math.random()*100+'%;top:'+Math.random()*100+'%;animation:twinkle '+(3+Math.random()*4)+'s infinite '+Math.random()*3+'s ease-in-out';bg.appendChild(s)}}
+createStars();
+
+// ======== MUSIC SYSTEM (pure Web Audio API — cozy Sheepy style) ========
+let audioCtx=null;
+let musicPlaying=false;
+let currentWorldMusic=-1;
+let activeNodes=[];
+let melTimer=null;
+let texTimer=null;
+let bassTimer=null;
+
+const NF={
+  'C3':130.81,'C4':261.63,'C5':523.25,'C6':1046.50,
+  'Db3':138.59,'Db5':554.37,
+  'D3':146.83,'D4':293.66,'D5':587.33,'D6':1174.66,
+  'Eb3':155.56,'Eb4':311.13,'Eb5':622.25,
+  'E3':164.81,'E4':329.63,'E5':659.25,'E6':1318.51,
+  'F3':174.61,'F4':349.23,'F5':698.46,
+  'F#3':185,'F#4':369.99,'F#5':739.99,
+  'G3':196,'G4':392,'G5':783.99,
+  'Ab3':207.65,'Ab4':415.30,'Ab5':830.61,
+  'A3':220,'A4':440,'A5':880,
+  'Bb3':233.08,'Bb4':466.16,'Bb5':932.33,
+  'B3':246.94,'B4':493.88,'B5':987.77
+};
+
+// Cozy Sheepy-style themes: warm, gentle, all new melodies — 10 worlds
+const THEMES=[
+  // 0 Marsh: gentle rippling, Eb major
+  {melody:['Eb4','G4','Bb4','C5','Bb4','G4','F4','Eb4','D4','Eb4','F4','G4','Ab4','G4','F4','Eb4',
+           'Bb4','Ab4','G4','F4','Eb4','F4','G4','Bb4','C5','Bb4','Ab4','G4','F4','Eb4','D4','Eb4'],
+   bass:['Eb3','Bb3','C3','G3','Eb3','Bb3','Ab3','Bb3'],
+   pad:[155.56,196,233.08],bpm:74,wave:'sine'},
+  // 1 Clockwork: ticking, precise, F major
+  {melody:['F4','A4','C5','A4','G4','F4','E4','F4','G4','A4','Bb4','A4','G4','F4','E4','D4',
+           'C4','D4','E4','F4','G4','A4','Bb4','A4','G4','F4','E4','F4','A4','G4','F4','C4'],
+   bass:['F3','C3','D3','Bb3','F3','C3','G3','C3'],
+   pad:[174.61,220,261.63],bpm:82,wave:'sine'},
+  // 2 Coral: flowing, watery, Ab major
+  {melody:['Ab4','C5','Eb5','C5','Bb4','Ab4','G4','Ab4','Bb4','C5','Db5','C5','Bb4','Ab4','G4','F4',
+           'Eb4','F4','G4','Ab4','Bb4','C5','Bb4','Ab4','G4','Ab4','Bb4','C5','Eb5','C5','Bb4','Ab4'],
+   bass:['Ab3','Eb3','F3','C3','Ab3','Eb3','Db3','Eb3'],
+   pad:[207.65,261.63,311.13],bpm:68,wave:'sine'},
+  // 3 Giant's Garden: bouncy, playful, G major
+  {melody:['G4','A4','B4','D5','E5','D5','C5','B4','A4','G4','A4','B4','C5','D5','C5','B4',
+           'E4','G4','A4','B4','C5','B4','A4','G4','F#4','G4','A4','B4','D5','B4','A4','G4'],
+   bass:['G3','D3','E3','C3','G3','D3','B3','D3'],
+   pad:[196,246.94,293.66],bpm:86,wave:'sine'},
+  // 4 Pirate: adventurous, D major
+  {melody:['D4','F#4','A4','D5','C5','B4','A4','F#4','E4','F#4','G4','A4','B4','A4','G4','F#4',
+           'D4','E4','F#4','A4','B4','A4','G4','F#4','E4','D4','E4','F#4','A4','G4','F#4','D4'],
+   bass:['D3','A3','B3','G3','D3','A3','E3','A3'],
+   pad:[146.83,185,220],bpm:78,wave:'sine'},
+  // 5 Dreamlands: floaty, dreamy, Bb major
+  {melody:['Bb4','D5','F5','Eb5','D5','C5','Bb4','A4','Bb4','C5','D5','Eb5','D5','C5','Bb4','A4',
+           'G4','A4','Bb4','C5','D5','C5','Bb4','A4','G4','F4','G4','A4','Bb4','A4','G4','F4'],
+   bass:['Bb3','F3','G3','Eb3','Bb3','F3','D3','F3'],
+   pad:[233.08,293.66,349.23],bpm:62,wave:'sine'},
+  // 6 Frozen Peaks: crisp, bright, E major
+  {melody:['E4','G4','B4','E5','D5','B4','A4','G4','F#4','G4','A4','B4','C5','B4','A4','G4',
+           'E4','F#4','G4','A4','B4','A4','G4','F#4','E4','D4','E4','F#4','G4','A4','G4','E4'],
+   bass:['E3','B3','A3','F#3','E3','B3','G3','B3'],
+   pad:[164.81,207.65,246.94],bpm:72,wave:'sine'},
+  // 7 Circus: whimsical, C major with flair
+  {melody:['C5','E5','G5','E5','D5','C5','B4','C5','D5','E5','F5','E5','D5','C5','B4','A4',
+           'G4','A4','B4','C5','D5','E5','D5','C5','B4','A4','G4','A4','B4','C5','B4','G4'],
+   bass:['C3','G3','A3','F3','C3','G3','E3','G3'],
+   pad:[261.63,329.63,392],bpm:88,wave:'sine'},
+  // 8 Ember Jungle: warm, golden, A major
+  {melody:['A4','C5','E5','D5','C5','B4','A4','G4','F#4','G4','A4','B4','C5','B4','A4','G4',
+           'E4','F#4','G4','A4','B4','C5','B4','A4','G4','F#4','E4','F#4','A4','G4','F#4','E4'],
+   bass:['A3','E3','F#3','D3','A3','E3','B3','E3'],
+   pad:[220,277.18,329.63],bpm:76,wave:'sine'},
+  // 9 Time Library: grand, reflective, F major
+  {melody:['F4','A4','C5','D5','C5','A4','G4','F4','E4','F4','G4','A4','Bb4','A4','G4','F4',
+           'C4','D4','E4','F4','G4','A4','G4','F4','E4','D4','C4','D4','F4','E4','D4','C4'],
+   bass:['F3','C3','D3','Bb3','F3','C3','A3','C3'],
+   pad:[174.61,220,261.63],bpm:66,wave:'sine'}
+];
+
+function ensureCtx(){
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  return audioCtx;
+}
+
+// Soft piano-like tone: sine + quiet overtone, fast attack, gentle decay
+function playPianoNote(ctx,frequency,duration,volume,startTime){
+  const t=startTime||ctx.currentTime;
+
+  // Fundamental
+  const osc=ctx.createOscillator();
+  const g=ctx.createGain();
+  osc.type='sine';
+  osc.frequency.value=frequency;
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(volume,t+0.02);
+  g.gain.exponentialRampToValueAtTime(volume*0.5,t+duration*0.3);
+  g.gain.exponentialRampToValueAtTime(0.001,t+duration);
+  osc.connect(g);g.connect(ctx.destination);
+  osc.start(t);osc.stop(t+duration+0.05);
+
+  // Soft overtone for warmth (octave above, very quiet)
+  const osc2=ctx.createOscillator();
+  const g2=ctx.createGain();
+  osc2.type='sine';
+  osc2.frequency.value=frequency*2;
+  g2.gain.setValueAtTime(0,t);
+  g2.gain.linearRampToValueAtTime(volume*0.12,t+0.02);
+  g2.gain.exponentialRampToValueAtTime(0.001,t+duration*0.6);
+  osc2.connect(g2);g2.connect(ctx.destination);
+  osc2.start(t);osc2.stop(t+duration+0.05);
+}
+
+// Warm pad: very soft, slow-breathing sine chords
+function startPad(ctx,freqs,gain){
+  freqs.forEach((f,i)=>{
+    const osc=ctx.createOscillator();
+    const g=ctx.createGain();
+    osc.type='sine';
+    osc.frequency.value=f;
+    g.gain.value=0;
+    osc.connect(g);g.connect(ctx.destination);
+    osc.start();
+    // Gentle fade in
+    g.gain.linearRampToValueAtTime(gain,ctx.currentTime+3+i*0.5);
+    // Slow gentle breathing via LFO
+    const lfo=ctx.createOscillator();
+    const lfoG=ctx.createGain();
+    lfo.type='sine';
+    lfo.frequency.value=0.12+i*0.03;
+    lfoG.gain.value=gain*0.3;
+    lfo.connect(lfoG);lfoG.connect(g.gain);
+    lfo.start();
+    activeNodes.push({stop:()=>{
+      g.gain.linearRampToValueAtTime(0,ctx.currentTime+1.5);
+      setTimeout(()=>{try{osc.stop();lfo.stop()}catch(e){}},2000);
+    }});
+  });
+}
+
+function startWorldMusic(worldIdx){
+  if(currentWorldMusic===worldIdx&&activeNodes.length>0)return;
+  stopWorldMusic();
+  currentWorldMusic=worldIdx;
+  const ctx=ensureCtx();
+  const t=THEMES[worldIdx]||THEMES[0];
+  const beatMs=60/t.bpm*1000;
+
+  // Warm pad
+  startPad(ctx,t.pad,0.025);
+
+  // Melody loop: piano-like notes
+  let melIdx=0;
+  function nextMel(){
+    if(!musicPlaying)return;
+    const note=t.melody[melIdx%t.melody.length];
+    const f=NF[note];
+    if(f){
+      // Occasionally skip a note for gentle breathing
+      if(Math.random()>0.12){
+        playPianoNote(ctx,f,beatMs/1000*1.8,0.07);
+      }
+    }
+    melIdx++;
+    melTimer=setTimeout(nextMel,beatMs);
+  }
+  melTimer=setTimeout(nextMel,1500);
+
+  // Gentle bass: soft low notes, half-time
+  let bassIdx=0;
+  function nextBass(){
+    if(!musicPlaying)return;
+    const note=t.bass[bassIdx%t.bass.length];
+    const f=NF[note];
+    if(f){
+      playPianoNote(ctx,f,beatMs/1000*3.5,0.035);
+    }
+    bassIdx++;
+    bassTimer=setTimeout(nextBass,beatMs*2);
+  }
+  bassTimer=setTimeout(nextBass,2500);
+
+  // Twinkle texture: high quiet sparkles like distant wind chimes
+  const sparkleNotes=[523.25,659.25,783.99,987.77,1046.50,1174.66,1318.51];
+  function sparkle(){
+    if(!musicPlaying)return;
+    if(Math.random()>0.35){
+      const f=sparkleNotes[Math.floor(Math.random()*sparkleNotes.length)];
+      playPianoNote(ctx,f,1.2,0.015);
+    }
+    texTimer=setTimeout(sparkle,2000+Math.random()*3000);
+  }
+  texTimer=setTimeout(sparkle,4000);
+}
+
+function stopWorldMusic(){
+  if(melTimer){clearTimeout(melTimer);melTimer=null}
+  if(bassTimer){clearTimeout(bassTimer);bassTimer=null}
+  if(texTimer){clearTimeout(texTimer);texTimer=null}
+  activeNodes.forEach(n=>{try{n.stop()}catch(e){}});
+  activeNodes=[];
+  currentWorldMusic=-1;
+}
+
+// === SFX: warm and friendly ===
+function playCorrectSfx(){
+  if(!musicPlaying)return;
+  try{
+    const ctx=ensureCtx();
+    // Happy ascending chime: C5 → E5 → G5
+    playPianoNote(ctx,523.25,0.3,0.1);
+    setTimeout(()=>playPianoNote(ctx,659.25,0.3,0.1),120);
+    setTimeout(()=>playPianoNote(ctx,783.99,0.5,0.12),240);
+  }catch(e){}
+}
+
+function playWrongSfx(){
+  if(!musicPlaying)return;
+  try{
+    const ctx=ensureCtx();
+    // Gentle "oops": two soft descending notes
+    playPianoNote(ctx,392,0.25,0.06); // G4
+    setTimeout(()=>playPianoNote(ctx,329.63,0.35,0.06),180); // E4
+  }catch(e){}
+}
+
+function playChapterFanfare(){
+  if(!musicPlaying)return;
+  try{
+    const ctx=ensureCtx();
+    // Warm celebratory arpeggio
+    const notes=[261.63,329.63,392,523.25,659.25,783.99,1046.50];
+    notes.forEach((f,i)=>{
+      setTimeout(()=>playPianoNote(ctx,f,0.8,0.09),i*150);
+    });
+    // Final warm chord
+    setTimeout(()=>{
+      [261.63,329.63,392,523.25].forEach(f=>playPianoNote(ctx,f,2.0,0.06));
+    },notes.length*150+100);
+  }catch(e){}
+}
+
+// Toggle button
+$('musicBtn').addEventListener('click',()=>{
+  ensureCtx();
+  musicPlaying=!musicPlaying;
+  $('musicBtn').classList.toggle('playing',musicPlaying);
+  if(musicPlaying){
+    startWorldMusic(state.world);
+  }else{
+    stopWorldMusic();
+  }
+});
+
+// Auto-switch music when world changes
+(function(){
+  let lastWorld=-1;
+  setInterval(()=>{
+    if(musicPlaying&&state.world!==lastWorld){
+      lastWorld=state.world;
+      startWorldMusic(state.world);
+    }
+  },500);
+})();
+
+})();
+</script>
+</body>
+</html>
